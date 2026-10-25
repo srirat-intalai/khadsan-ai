@@ -48,35 +48,42 @@ STICKER_SPARK = svg_img('<svg xmlns="http://www.w3.org/2000/svg" width="54" heig
 # ฟังก์ชันทำป้ายตรวจคุณภาพ
 # photo = รูป base64 (ถ้าไม่มีใส่ "") / kind, conf = ข้อความในช่อง / stamp = ตราปั๊ม
 # fresh = "สด" หรือ "เน่า" จะติ๊กลงช่องนั้นให้ (ถ้าไม่ใส่ = ช่องว่างทั้งคู่)
-def tag_html(photo, kind, conf, stamp, fresh=""):
+# others = ข้อความอันดับรองลงมา (ถ้าไม่ใส่ = ไม่โชว์)
+def tag_html(photo, kind, conf, stamp, fresh="", others=""):
     html = '<div class="tag-card">'
     html = html + '<div class="tag-hole"></div>'
     if stamp != "":
         if stamp == "เน่า":
             html = html + '<div class="stamp stamp-rotten">' + stamp + '</div>'
+        elif stamp == "ตรวจซ้ำ":
+            html = html + '<div class="stamp stamp-unsure">' + stamp + '</div>'
         else:
             html = html + '<div class="stamp">' + stamp + '</div>'
     html = html + '<div class="tag-title">ป้ายตรวจคุณภาพ</div>'
     if photo != "":
-        html = html + '<img class="tag-photo" src="' + photo + '" alt="รูปหลังปรับขนาด ' + SIZE_TEXT + '">'
+        html = html + '<img class="tag-photo" src="' + photo + '" alt="รูปที่โมเดลเห็น ถูกบีบเป็น ' + SIZE_TEXT + '">'
+        html = html + '<div class="tag-photo-note">รูปที่โมเดลเห็น (บีบเป็น ' + SIZE_TEXT + ')</div>'
     html = html + '<div class="tag-row"><span class="tag-key">ชนิด</span><span class="tag-line">' + kind + '</span></div>'
 
     # ช่องสด / เน่า ติ๊กช่องที่โมเดลตอบ
+    # ติ๊กเป็นรูป โปรแกรมอ่านหน้าจอมองไม่เห็น เลยเขียนข้อความซ่อนไว้ให้ (class sr-only คนเห็นไม่ได้ แต่โปรแกรมอ่านได้)
     box_fresh = '<span class="box"></span>'
     box_rotten = '<span class="box"></span>'
     if fresh == "สด":
-        box_fresh = '<span class="box">' + ICON_TICK + '</span>'
+        box_fresh = '<span class="box">' + ICON_TICK + '<span class="sr-only">ติ๊กแล้ว</span></span>'
     if fresh == "เน่า":
-        box_rotten = '<span class="box">' + ICON_TICK_RED + '</span>'
+        box_rotten = '<span class="box">' + ICON_TICK_RED + '<span class="sr-only">ติ๊กแล้ว</span></span>'
     html = html + '<div class="tag-row"><span class="tag-key">สถานะ</span><span>' + box_fresh + 'สด &nbsp; ' + box_rotten + 'เน่า</span></div>'
     html = html + '<div class="tag-row"><span class="tag-key">ความมั่นใจ</span><span class="tag-line">' + conf + '</span></div>'
+    if others != "":
+        html = html + '<div class="tag-others">' + others + '</div>'
     html = html + '<div class="tag-foot">ตรวจโดย KhadSan AI</div>'
     html = html + '</div>'
     return html
 
 
 # ฟังก์ชันทำ 1 ข้อในเช็กลิสต์ขั้นตอน (หน้าตาเหมือนช่องติ๊กในป้ายตรวจ)
-# state = "done" เสร็จแล้ว / "wait" รออยู่ / "error" รูปใช้ไม่ได้ / "" ยังไม่เริ่ม
+# state = "done" เสร็จแล้ว / "wait" รออยู่ / "unsure" โมเดลไม่แน่ใจ / "error" รูปใช้ไม่ได้ / "" ยังไม่เริ่ม
 def step_html(num, title, sub, state):
     html = '<div class="step'
     if state != "":
@@ -95,6 +102,8 @@ def step_html(num, title, sub, state):
         html = html + 'เสร็จแล้ว'
     if state == "wait":
         html = html + 'รอโมเดล'
+    if state == "unsure":
+        html = html + 'ไม่แน่ใจ ตรวจซ้ำ'
     if state == "error":
         html = html + 'ใช้รูปนี้ไม่ได้'
     html = html + '</div>'
@@ -115,15 +124,18 @@ def load_model():
     return model, class_names
 
 
-# ให้โมเดลทาย แล้วแยกชื่อคลาส เช่น "Apple__Healthy" -> ("Apple", "Healthy")
+# ให้โมเดลทาย แล้วเอา 3 อันดับแรก
+# คืนเป็น list เช่น [["Apple", "Healthy", 97.2], ["Pomegranate", "Healthy", 2.6], ...]
 def predict(model, class_names, data):
     probs = model.predict(data, verbose=0)[0]   # ได้ความน่าจะเป็นของทั้ง 28 คลาส
-    i = int(np.argmax(probs))                   # เอาคลาสที่คะแนนสูงสุด
-    name = class_names[i]
-    fruit = name.split("__")[0]
-    status = name.split("__")[1]
-    conf = float(probs[i]) * 100
-    return fruit, status, conf
+    order = np.argsort(probs)[::-1]             # เรียงลำดับคลาสจากคะแนนมากไปน้อย
+    top = []
+    for i in order[:3]:
+        name = class_names[i]                   # เช่น "Apple__Healthy"
+        fruit = name.split("__")[0]
+        status = name.split("__")[1]
+        top.append([fruit, status, float(probs[i]) * 100])
+    return top
 
 
 st.set_page_config(page_title="KhadSan AI", page_icon="🍎", layout="wide")
@@ -147,7 +159,7 @@ hero = '<div class="hero">'
 hero = hero + '<div class="hero-left">'
 hero = hero + '<span class="caption">ถึงทีมคัดแยกสินค้า,</span>'
 hero = hero + '<h1 class="display">ผักผลไม้ชิ้นนี้<br>ยังสดอยู่ไหม?</h1>'
-hero = hero + '<div class="body">ไม่ต้องไล่ดูด้วยตาทีละชิ้นจนล้า ถ่ายรูปหรืออัปโหลดรูปมา แล้วให้โมเดล CNN ที่ทีมเราเทรนเองช่วยบอกชนิด และบอกว่า<span class="marker">สดหรือเน่า</span> ก่อนของเสียจะหลุดไปถึงมือลูกค้า</div>'
+hero = hero + '<div class="body">ไม่ต้องไล่ดูด้วยตาทีละชิ้นจนล้า ถ่ายรูปหรืออัปโหลดรูปมา แล้วให้โมเดล CNN ที่ทีมเรา fine-tune ช่วยบอกชนิด และบอกว่า<span class="marker">สดหรือเน่า</span> ก่อนของเสียจะหลุดไปถึงมือลูกค้า</div>'
 hero = hero + '<a class="pill" href="#scan">เริ่มสแกน ' + ICON_ARROW + '</a>'
 hero = hero + '</div>'
 
@@ -183,12 +195,15 @@ with left:
                                     default=":material/upload: อัปโหลดรูป", required=True,
                                     key="mode", label_visibility="collapsed", width="stretch")
 
+        # บอกก่อนใส่รูปเลยว่าโมเดลรู้จักอะไรบ้าง (ผักผลไม้อื่นโมเดลจะเดาเป็น 14 ชนิดนี้อยู่ดี)
+        known = '<div class="known">รู้จัก ' + str(len(THAI_NAMES)) + ' ชนิด: ' + ' · '.join(THAI_NAMES.values()) + '</div>'
+
         file = None
         if mode == ":material/upload: อัปโหลดรูป":
-            st.html('<h3 class="card-title">อัปโหลดรูป</h3><div class="card-sub">กดปุ่ม "เลือกรูป" หรือลากรูปมาวางในกรอบประ<br>jpg / png ไม่เกิน ' + str(MAX_MB) + ' MB · สลับโหมดแล้วรูปเดิมจะหายนะ</div>')
+            st.html('<h3 class="card-title">อัปโหลดรูป</h3><div class="card-sub">กดปุ่ม "เลือกรูป" หรือลากรูปมาวางในกรอบประ<br>jpg / png ไม่เกิน ' + str(MAX_MB) + ' MB · สลับโหมดแล้วรูปเดิมจะหายนะ</div>' + known)
             file = st.file_uploader("เลือกไฟล์รูป", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
         else:
-            st.html('<h3 class="card-title">ถ่ายรูปจากกล้อง</h3><div class="card-sub">ถ้ากล้องไม่ขึ้น ให้กดอนุญาตกล้องในเบราว์เซอร์ หรือสลับไปโหมดอัปโหลดแทน</div>')
+            st.html('<h3 class="card-title">ถ่ายรูปจากกล้อง</h3><div class="card-sub">ถ้ากล้องไม่ขึ้น ให้กดอนุญาตกล้องในเบราว์เซอร์ หรือสลับไปโหมดอัปโหลดแทน</div>' + known)
             file = st.camera_input("ถ่ายรูปผักผลไม้", label_visibility="collapsed")
 
     # เปิดรูป + เช็กไฟล์ (รูปใหญ่ใช้เวลานิดนึง เลยขึ้นข้อความหมุนๆ ให้รู้ว่ากำลังทำอยู่)
@@ -226,7 +241,7 @@ with left:
         try:
             with st.spinner("AI กำลังตรวจ... (ครั้งแรกต้องโหลดโมเดล อาจนานหน่อย)"):
                 model, class_names = load_model()
-                fruit, status, conf = predict(model, class_names, data)
+                top = predict(model, class_names, data)
             predicted = True
         except Exception:
             predicted = False
@@ -234,7 +249,10 @@ with left:
         result = '<div class="card">'
         result = result + '<h3 class="card-title">ผลตรวจ</h3>'
         if predicted:
-            # ชื่อไทย (อังกฤษ) / สด-เน่า / % ความมั่นใจ
+            # อันดับ 1 = คำตอบหลัก
+            fruit = top[0][0]
+            status = top[0][1]
+            conf = top[0][2]
             kind = THAI_NAMES.get(fruit, fruit) + ' (' + fruit + ')'
             if status == "Healthy":
                 fresh = "สด"
@@ -242,11 +260,33 @@ with left:
                 fresh = "เน่า"
             conf_text = str(round(conf, 1)) + " %"
 
-            # บอกด้วยว่าโมเดลรู้จักอะไรบ้าง จะได้ไม่เอารูปผักผลไม้ที่โมเดลไม่รู้จักมาลอง
-            result = result + '<div class="card-sub">โมเดลรู้จัก ' + str(len(THAI_NAMES)) + ' ชนิด: ' + ' '.join(THAI_NAMES.values()) + '</div>'
-            result = result + '<div class="result-wrap"><div class="result-tag">' + tag_html(to_base64(small), kind, conf_text, fresh, fresh) + '</div></div>'
+            # อันดับ 2-3 ไว้ดูว่าโมเดลลังเลกับอะไร
+            others = "รองลงมา: "
+            for i in range(1, len(top)):
+                if top[i][1] == "Healthy":
+                    other_status = "สด"
+                else:
+                    other_status = "เน่า"
+                if i > 1:
+                    others = others + " · "
+                others = others + THAI_NAMES.get(top[i][0], top[i][0]) + " " + other_status + " " + str(round(top[i][2], 1)) + "%"
+
+            # ความมั่นใจต่ำ = ไม่ปั๊มสด/เน่า ให้ปั๊มตรวจซ้ำแทน และไม่ติ๊กช่อง
+            if conf < LOW_CONF:
+                stamp = "ตรวจซ้ำ"
+                tick = ""
+                answer = "ไม่แน่ใจ"
+            else:
+                stamp = fresh
+                tick = fresh
+                answer = fresh
+
+            result = result + '<div class="card-sub">ผลจาก AI ใช้ช่วยคัด ไม่ใช่คำตัดสินสุดท้าย</div>'
+            result = result + '<div class="result-wrap"><div class="result-tag">' + tag_html(to_base64(small), kind, conf_text, stamp, tick, others) + '</div></div>'
             if conf < LOW_CONF:
                 result = result + '<div class="tag-warn">ความมั่นใจต่ำ ลองถ่ายใหม่ให้เห็นชิ้นเดียวชัดๆ พื้นหลังเรียบ</div>'
+            # ข้อความซ่อนไว้ให้โปรแกรมอ่านหน้าจออ่านผลออกเสียงทันทีที่ทายเสร็จ (role="alert")
+            result = result + '<div class="sr-only" role="alert">ผลตรวจ: ' + THAI_NAMES.get(fruit, fruit) + ' ' + answer + ' ความมั่นใจ ' + str(round(conf, 1)) + ' เปอร์เซ็นต์</div>'
         else:
             result = result + '<div class="card-sub">ยังโหลดโมเดลไม่ได้ ป้ายนี้เลยยังว่างอยู่</div>'
             result = result + '<div class="result-wrap"><div class="result-tag">' + tag_html(to_base64(small), "--", "-- %", "รอโมเดล") + '</div></div>'
@@ -302,6 +342,8 @@ with right:
             card = card + '</div>'
         card = card + '<span class="chip">ขนาด ' + str(shape) + '</span>'
         card = card + '<span class="chip">ช่วงค่า ' + str(round(float(data.min()), 3)) + ' – ' + str(round(float(data.max()), 3)) + '</span>'
+        # อธิบายตัวเลขในป้ายเป็นภาษาคน
+        card = card + '<div class="chip-note">ขนาด = ' + str(shape[0]) + ' รูป · ' + str(shape[1]) + '×' + str(shape[2]) + ' พิกเซล · ' + str(shape[3]) + ' สี (R G B) / ช่วงค่า = สีเข้มสุดถึงสว่างสุดในรูป</div>'
         card = card + '</div>'
         st.html(card)
 
@@ -310,10 +352,12 @@ with right:
 if img is not None:
     s1 = "done"
     s2 = "done"
-    if predicted:
-        s3 = "done"
-    else:
+    if predicted == False:
         s3 = "wait"
+    elif conf < LOW_CONF:
+        s3 = "unsure"
+    else:
+        s3 = "done"
 elif error != "":
     s1 = "error"
     s2 = ""
