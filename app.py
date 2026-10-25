@@ -331,8 +331,8 @@ with right:
     elif error != "":
         box = box + '<div class="card-sub">ใช้รูปนี้ไม่ได้</div>'
         box = box + '<div class="frame frame-error">' + corners
-        # รายละเอียด error ขึ้นในกล่องแดงใต้ช่องใส่รูปแล้ว ตรงนี้บอกสั้นๆ พอ
-        box = box + '<div class="frame-msg">' + ICON_ALERT + '<span class="msg">ลองใส่รูปใหม่ · ดูสาเหตุในกล่องสีแดง</span></div></div>'
+        # รายละเอียด error ขึ้นในกล่องใต้ช่องใส่รูปแล้ว ตรงนี้บอกสั้นๆ พอ
+        box = box + '<div class="frame-msg">' + ICON_ALERT + '<span class="msg">ลองใส่รูปใหม่ · ดูสาเหตุใต้ช่องใส่รูป</span></div></div>'
     else:
         box = box + '<div class="card-sub">ยังไม่มีรูป</div>'
         box = box + '<div class="frame">' + corners

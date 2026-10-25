@@ -190,6 +190,9 @@
 [data-testid="stCameraInputWebcamComponent"] p {font-size: 0;}
 [data-testid="stCameraInputWebcamComponent"] p a {display: none;}
 [data-testid="stCameraInputWebcamComponent"] p::before {content: "เบราว์เซอร์ยังไม่ให้ใช้กล้อง กดอนุญาตกล้อง หรือสลับไปโหมดอัปโหลด"; font-size: 15px;}
+/* กล่อง error ของ streamlit (เดิมสีชมพู) ให้เป็นกระดาษขอบสีอิฐ แบบเดียวกับกรอบสแกนตอนรูปใช้ไม่ได้ */
+[data-testid="stAlertContainer"]:has([data-testid="stAlertContentError"]) {background: var(--paper); border: 1.5px solid var(--rotten);}
+[data-testid="stAlertContentError"] {color: var(--rotten);}
 /* ซ่อนปุ่ม + (เพิ่มไฟล์) เพราะเว็บใช้ทีละรูป */
 [data-testid="stFileUploader"] button[aria-label="Add files"] {display: none;}
 /* ปุ่ม "สแกนชิ้นต่อไป" ขอบหมึกดำ แบบเดียวกับปุ่ม เริ่มสแกน */
