@@ -406,3 +406,12 @@ foot = foot + '<span class="caption">คัดของสด ก่อนขอ
 foot = foot + '<div class="footer-small">โปรเจกต์วิชา CS461 AI for Business Solutions · โมเดล MobileNetV2 ที่ทีม fine-tune ด้วย Fruit and Vegetable Diseases Dataset (Kaggle)</div>'
 foot = foot + '</div>'
 st.html(th(foot))
+
+
+# ===== โหลดโมเดลรอไว้ก่อน =====
+# วางไว้ท้ายสุด หน้าเว็บขึ้นครบแล้วค่อยโหลด ระหว่างคนอ่านหัวเว็บ โมเดลก็โหลดเสร็จพอดี
+# คนแรกที่อัปรูปจะไม่ต้องรอโหลดโมเดลอีก (ถ้าโหลดไม่ได้ก็ข้ามไปก่อน ไว้ไปแจ้งตอนทาย)
+try:
+    load_model()
+except Exception:
+    pass

@@ -201,7 +201,8 @@
 /* ===== กรอบสแกน ===== */
 .frame {
     position: relative;
-    height: 360px;
+    --frame-h: 360px;
+    height: var(--frame-h);
     border-radius: 12px;
     overflow: hidden;
     background: var(--dew);
@@ -226,7 +227,7 @@
     position: absolute;
     left: 6%;
     right: 6%;
-    top: 50%;
+    top: 8%;
     height: 3px;
     border-radius: 3px;
     background: var(--olive-soft);
@@ -234,9 +235,11 @@
     opacity: 0;
     animation: scan 1.6s ease-in-out 2 alternate;
 }
+/* เลื่อนด้วย transform (ลื่นกว่าเปลี่ยน top เพราะเบราว์เซอร์ไม่ต้องคำนวณหน้าใหม่ทุกเฟรม)
+   ระยะเลื่อน = 84% ของความสูงกรอบ (จาก 8% ลงไปถึง 92%) */
 @keyframes scan {
-    0% {top: 8%; opacity: 1;}
-    100% {top: 92%; opacity: 1;}
+    0% {transform: translateY(0); opacity: 1;}
+    100% {transform: translateY(calc(var(--frame-h) * 0.84)); opacity: 1;}
 }
 @media (prefers-reduced-motion: reduce) {
     .scan-line {animation: none;}
@@ -333,7 +336,7 @@
     .mark {font-size: 14px; line-height: 1.3; flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 6px;}
     .tick-box {width: 18px; height: 18px;}
     .tick-box img {width: 24px; height: 24px;}
-    .frame {height: 280px;}
+    .frame {--frame-h: 280px;}
     .section-title {font-size: 28px;}
     /* จอเล็ก คอลัมน์ซ้ายขวาเรียงลงมา streamlit เว้นห่าง 64px เกินไป ลดให้เท่าระยะการ์ดอื่น (36px) */
     [data-testid="stHorizontalBlock"] {row-gap: 16px;}
