@@ -193,7 +193,9 @@
 /* ซ่อนปุ่ม + (เพิ่มไฟล์) เพราะเว็บใช้ทีละรูป */
 [data-testid="stFileUploader"] button[aria-label="Add files"] {display: none;}
 /* ปุ่ม "สแกนชิ้นต่อไป" ขอบหมึกดำ แบบเดียวกับปุ่ม เริ่มสแกน */
-.st-key-next_item button {border: 1.5px solid var(--ink); color: var(--ink); padding: 8px 24px;}
+.st-key-next_item button {border: 1.5px solid var(--ink); color: var(--ink); padding: 8px 24px; min-height: 44px;}
+/* ปุ่ม ✕ ลบไฟล์ของ streamlit เล็กแค่ 14px ขยายพื้นที่กดให้นิ้วกดง่าย (ไอคอนเท่าเดิม) */
+[data-testid="stFileUploader"] button[aria-label^="Remove"] {min-width: 44px; min-height: 44px;}
 
 
 /* ===== กรอบสแกน ===== */
