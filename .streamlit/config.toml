@@ -1,0 +1,21 @@
+# ธีมเว็บ : สมุดตรวจของฝ่าย QC (ได้แรงบันดาลใจจาก Superr)
+# กระดาษครีม + หมึกดำ + ปากกาเมจิกสีเขียวมะกอก
+[theme]
+base = "light"
+primaryColor = "#4F6815"
+backgroundColor = "#FDFBF9"
+secondaryBackgroundColor = "#F7EFE9"
+textColor = "#171717"
+borderColor = "#D9D2CA"
+linkColor = "#4F6815"
+# ฟอนต์ : Anuphan เนื้อหา / Mitr หัวข้อ (ฟอนต์ลายมือ Mali โหลดใน style.css)
+font = "Anuphan:https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600&display=swap"
+headingFont = "Mitr:https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&display=swap"
+baseRadius = "12px"
+buttonRadius = "full"
+
+# เปิดให้เว็บดึงไฟล์ในโฟลเดอร์ static ได้ (ใช้กับรูปหัวเว็บ)
+[server]
+enableStaticServing = true
+# ตั้งให้ใหญ่กว่า MAX_MB ใน app.py หน่อย ข้อความเตือนภาษาไทยของเราจะได้ขึ้นแทนของ streamlit
+maxUploadSize = 50
