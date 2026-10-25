@@ -212,7 +212,7 @@ with left:
                                     key="mode", label_visibility="collapsed", width="stretch")
 
         # บอกก่อนใส่รูปเลยว่าโมเดลรู้จักอะไรบ้าง (ผักผลไม้อื่นโมเดลจะเดาเป็น 14 ชนิดนี้อยู่ดี)
-        known = '<div class="known">รู้จัก ' + str(len(THAI_NAMES)) + ' ชนิด: ' + ' · '.join(THAI_NAMES.values()) + '</div>'
+        known = '<div class="known">โมเดลรู้จัก ' + str(len(THAI_NAMES)) + ' ชนิด: ' + ' · '.join(THAI_NAMES.values()) + '</div>'
 
         file = None
         if mode == ":material/upload: อัปโหลดรูป":
@@ -364,7 +364,7 @@ with right:
         card = card + '<span class="chip">ขนาด ' + str(shape) + '</span>'
         card = card + '<span class="chip">ช่วงค่า ' + str(round(float(data.min()), 3)) + ' – ' + str(round(float(data.max()), 3)) + '</span>'
         # อธิบายตัวเลขในป้ายเป็นภาษาคน
-        card = card + '<div class="chip-note">ขนาด = ' + str(shape[0]) + ' รูป · ' + str(shape[1]) + '×' + str(shape[2]) + ' พิกเซล · ' + str(shape[3]) + ' สี (R G B) / ช่วงค่า = สีเข้มสุดถึงสว่างสุดในรูป</div>'
+        card = card + '<div class="chip-note">ขนาด = ' + str(shape[0]) + ' รูป · ' + str(shape[1]) + '×' + str(shape[2]) + ' พิกเซล · ' + str(shape[3]) + ' สี (R G B)<br>ช่วงค่า = สีเข้มสุดถึงสว่างสุดในรูป</div>'
         card = card + '</div>'
         st.html(th(card))
 
@@ -390,9 +390,9 @@ else:
 steps = '<div class="steps">'
 steps = steps + step_html("1", "ใส่รูป", "อัปโหลดหรือถ่ายจากกล้อง", s1)
 if HAR_255 == True:
-    step2_sub = "ย่อเป็น " + SIZE_TEXT + " และปรับค่าสีเป็น 0–1"
+    step2_sub = "บีบเป็น " + SIZE_TEXT + " และปรับค่าสีเป็น 0–1"
 else:
-    step2_sub = "ย่อเป็น " + SIZE_TEXT + " แล้วส่งเข้าโมเดล"
+    step2_sub = "บีบเป็น " + SIZE_TEXT + " แล้วส่งเข้าโมเดล"
 steps = steps + step_html("2", "ปรับรูป", step2_sub, s2)
 steps = steps + step_html("3", "AI ตรวจ", "บอกชนิด สด/เน่า และ % ความมั่นใจ", s3)
 steps = steps + '</div>'
