@@ -10,7 +10,7 @@ borderColor = "#D9D2CA"
 linkColor = "#4F6815"
 # ฟอนต์ : Anuphan เนื้อหา / Mitr หัวข้อ (ฟอนต์ลายมือ Mali โหลดใน style.css)
 font = "Anuphan:https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600&display=swap"
-headingFont = "Mitr:https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&display=swap"
+headingFont = "Mitr:https://fonts.googleapis.com/css2?family=Mitr:wght@500;600&display=swap"
 baseRadius = "12px"
 buttonRadius = "full"
 

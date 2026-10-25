@@ -288,14 +288,14 @@
 .bar-bg {height: 8px; background: var(--dew); border: 1px solid var(--ink); border-radius: 20px; margin-top: 6px; overflow: hidden;}
 .bar-fill {height: 100%; background: var(--ink);}
 /* คำอธิบายใต้ป้ายในการ์ดข้อมูล */
-.chip-note {margin-top: 10px; font-size: 13px; color: var(--muted);}
+.chip-note {margin-top: 10px; font-size: 14px; color: var(--muted);}
 .chip {
     display: inline-block;
     border: 1.5px solid var(--ink);
     border-radius: 20px;
     padding: 4px 12px;
     margin: 6px 6px 0 0;
-    font-size: 13px;
+    font-size: 14px;
     font-variant-numeric: tabular-nums;
 }
 
@@ -343,9 +343,15 @@
 /* รายชื่อชนิดที่โมเดลรู้จัก (ในการ์ดใส่รูป) */
 .known {font-size: 14px; color: var(--muted); margin: -6px 0 14px 0;}
 /* คำบอกใต้รูปย่อในป้าย */
-.tag-photo-note {font-family: 'Mali', cursive; font-size: 13px; color: var(--muted); text-align: center; margin: -8px 0 14px 0;}
+.tag-photo-note {font-family: 'Mali', cursive; font-size: 14px; color: var(--muted); text-align: center; margin: -8px 0 14px 0;}
 /* อันดับรองลงมา */
-.tag-others {font-size: 13px; color: var(--muted); margin-top: -4px;}
+.tag-others {font-size: 14px; color: var(--muted); margin-top: -4px;}
 
 /* ข้อความซ่อนไว้ให้โปรแกรมอ่านหน้าจออ่าน คนมองไม่เห็น */
 .sr-only {position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;}
+
+/* ===== การตัดบรรทัด ===== */
+/* หัวข้อ: แบ่งบรรทัดให้ยาวพอๆ กัน ไม่เหลือคำเดียวโดดๆ (เบราว์เซอร์เก่าที่ไม่รู้จักจะตัดแบบเดิม) */
+.section-title, .card-title, .tag-title, .step-title, .section-sub .caption {text-wrap: balance;}
+/* ข้อความรอง: ไม่ให้บรรทัดสุดท้ายเหลือคำเดียว */
+.card-sub, .known, .chip-note, .tag-others, .tag-warn, .frame-msg {text-wrap: pretty;}
