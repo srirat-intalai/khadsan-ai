@@ -45,6 +45,18 @@ STICKER_LEAF = svg_img('<svg xmlns="http://www.w3.org/2000/svg" width="66" heigh
 STICKER_SPARK = svg_img('<svg xmlns="http://www.w3.org/2000/svg" width="54" height="54" viewBox="0 0 48 48"><path d="M24 3 L28.5 19.5 L45 24 L28.5 28.5 L24 45 L19.5 28.5 L3 24 L19.5 19.5 Z" fill="#3B82F6" stroke="#171717" stroke-width="2" stroke-linejoin="round"/></svg>')
 
 
+# ห่อ html ด้วย lang="th" บอกเบราว์เซอร์กับโปรแกรมอ่านหน้าจอว่าข้อความในนี้เป็นภาษาไทย
+def th(html):
+    return '<div lang="th">' + html + '</div>'
+
+
+# แปลงตัวเลขเป็นข้อความ % (ถ้าน้อยมากจนปัดแล้วเป็น 0.0 ให้เขียน <0.1% แทน จะได้ไม่ดูเหมือนเลขพัง)
+def pct_text(x):
+    if x < 0.05:
+        return "<0.1%"
+    return str(round(x, 1)) + "%"
+
+
 # ฟังก์ชันทำป้ายตรวจคุณภาพ
 # photo = รูป base64 (ถ้าไม่มีใส่ "") / kind, conf = ข้อความในช่อง / stamp = ตราปั๊ม
 # fresh = "สด" หรือ "เน่า" จะติ๊กลงช่องนั้นให้ (ถ้าไม่ใส่ = ช่องว่างทั้งคู่)
@@ -149,7 +161,7 @@ with open(os.path.join(folder, "style.css"), encoding="utf-8") as f:
 nav = '<div class="nav">'
 nav = nav + '<div class="brand">' + ICON_LEAF + 'KhadSan AI</div>'
 nav = nav + '</div>'
-st.html(nav)
+st.html(th(nav))
 
 
 # ===== หัวเว็บ =====
@@ -174,11 +186,11 @@ hero = hero + '<div class="sticker" style="top: 20px; left: 40px; transform: rot
 hero = hero + '</div>'
 
 hero = hero + '</div>'
-st.html(hero)
+st.html(th(hero))
 
 
 # ===== ส่วนสแกน =====
-st.html('<h2 id="scan" class="section-title">สแกนผักผลไม้</h2><div class="section-sub"><span class="caption">ทีละชิ้นนะ ถ่ายให้ชัด พื้นหลังเรียบๆ แสงพอ</span></div>')
+st.html(th('<h2 id="scan" class="section-title">สแกนผักผลไม้</h2><div class="section-sub"><span class="caption">ทีละชิ้นนะ ถ่ายให้ชัด พื้นหลังเรียบๆ แสงพอ</span></div>'))
 
 # นับรอบการสแกน ใช้ตั้งชื่อ key ของช่องใส่รูป (กด "สแกนชิ้นต่อไป" = รอบใหม่ = ได้ช่องใส่รูปว่างๆ)
 if "round" not in st.session_state:
@@ -204,10 +216,10 @@ with left:
 
         file = None
         if mode == ":material/upload: อัปโหลดรูป":
-            st.html('<h3 class="card-title">อัปโหลดรูป</h3><div class="card-sub">กดปุ่ม "เลือกรูป" หรือลากรูปมาวางในกรอบประ<br>jpg / png ไม่เกิน ' + str(MAX_MB) + ' MB · สลับโหมดแล้วรูปเดิมจะหายนะ</div>' + known)
+            st.html(th('<h3 class="card-title">อัปโหลดรูป</h3><div class="card-sub">กดปุ่ม "เลือกรูป" หรือลากรูปมาวางในกรอบประ<br>jpg / png ไม่เกิน ' + str(MAX_MB) + ' MB · สลับโหมดแล้วรูปเดิมจะหายนะ</div>' + known))
             file = st.file_uploader("เลือกไฟล์รูป", type=["jpg", "jpeg", "png"], label_visibility="collapsed", key="upload_" + str(st.session_state["round"]))
         else:
-            st.html('<h3 class="card-title">ถ่ายรูปจากกล้อง</h3><div class="card-sub">ถ้ากล้องไม่ขึ้น ให้กดอนุญาตกล้องในเบราว์เซอร์ หรือสลับไปโหมดอัปโหลดแทน</div>' + known)
+            st.html(th('<h3 class="card-title">ถ่ายรูปจากกล้อง</h3><div class="card-sub">ถ้ากล้องไม่ขึ้น ให้กดอนุญาตกล้องในเบราว์เซอร์ หรือสลับไปโหมดอัปโหลดแทน</div>' + known))
             file = st.camera_input("ถ่ายรูปผักผลไม้", label_visibility="collapsed", key="camera_" + str(st.session_state["round"]))
 
     # เปิดรูป + เช็กไฟล์ (รูปใหญ่ใช้เวลานิดนึง เลยขึ้นข้อความหมุนๆ ให้รู้ว่ากำลังทำอยู่)
@@ -273,7 +285,7 @@ with left:
                     other_status = "เน่า"
                 if i > 1:
                     others = others + " · "
-                others = others + THAI_NAMES.get(top[i][0], top[i][0]) + " " + other_status + " " + str(round(top[i][2], 1)) + "%"
+                others = others + THAI_NAMES.get(top[i][0], top[i][0]) + " " + other_status + " " + pct_text(top[i][2])
 
             # ความมั่นใจต่ำ = ไม่ปั๊มสด/เน่า ให้ปั๊มตรวจซ้ำแทน และไม่ติ๊กช่อง
             if conf < LOW_CONF:
@@ -295,7 +307,7 @@ with left:
             result = result + '<div class="card-sub">ยังโหลดโมเดลไม่ได้ ป้ายนี้เลยยังว่างอยู่</div>'
             result = result + '<div class="result-wrap"><div class="result-tag">' + tag_html(to_base64(small), "--", "-- %", "รอโมเดล") + '</div></div>'
         result = result + '</div>'
-        st.html(result)
+        st.html(th(result))
         if predicted:
             # ปุ่มล้างรูปเดิม แล้วใส่ชิ้นต่อไปได้เลย ไม่ต้องเลื่อนขึ้นไปกดลบรูป
             if st.button("สแกนชิ้นต่อไป", key="next_item"):
@@ -326,7 +338,7 @@ with right:
         box = box + '<div class="frame">' + corners
         box = box + '<div class="frame-msg">' + ICON_CAMERA + '<span class="caption">ใส่รูปผักผลไม้ก่อนนะ</span></div></div>'
     box = box + '</div>'
-    st.html(box)
+    st.html(th(box))
 
     # ----- ข้อมูลที่ส่งเข้าโมเดล (ไว้โชว์อาจารย์ว่าเตรียมรูปจริง) -----
     if img is not None:
@@ -354,7 +366,7 @@ with right:
         # อธิบายตัวเลขในป้ายเป็นภาษาคน
         card = card + '<div class="chip-note">ขนาด = ' + str(shape[0]) + ' รูป · ' + str(shape[1]) + '×' + str(shape[2]) + ' พิกเซล · ' + str(shape[3]) + ' สี (R G B) / ช่วงค่า = สีเข้มสุดถึงสว่างสุดในรูป</div>'
         card = card + '</div>'
-        st.html(card)
+        st.html(th(card))
 
 
 # ===== เติมแถบขั้นตอน ตามว่ามีรูปแล้วหรือยัง =====
@@ -384,7 +396,7 @@ else:
 steps = steps + step_html("2", "ปรับรูป", step2_sub, s2)
 steps = steps + step_html("3", "AI ตรวจ", "บอกชนิด สด/เน่า และ % ความมั่นใจ", s3)
 steps = steps + '</div>'
-steps_box.html(steps)
+steps_box.html(th(steps))
 
 
 # ===== แถบท้ายเว็บ =====
@@ -393,4 +405,4 @@ foot = foot + '<div class="footer-brand">KhadSan AI</div>'
 foot = foot + '<span class="caption">คัดของสด ก่อนของเน่าหลุดถึงมือลูกค้า</span>'
 foot = foot + '<div class="footer-small">โปรเจกต์วิชา CS461 AI for Business Solutions · โมเดล MobileNetV2 ที่ทีม fine-tune ด้วย Fruit and Vegetable Diseases Dataset (Kaggle)</div>'
 foot = foot + '</div>'
-st.html(foot)
+st.html(th(foot))
