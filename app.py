@@ -180,6 +180,10 @@ st.html(hero)
 # ===== ส่วนสแกน =====
 st.html('<h2 id="scan" class="section-title">สแกนผักผลไม้</h2><div class="section-sub"><span class="caption">ทีละชิ้นนะ ถ่ายให้ชัด พื้นหลังเรียบๆ แสงพอ</span></div>')
 
+# นับรอบการสแกน ใช้ตั้งชื่อ key ของช่องใส่รูป (กด "สแกนชิ้นต่อไป" = รอบใหม่ = ได้ช่องใส่รูปว่างๆ)
+if "round" not in st.session_state:
+    st.session_state["round"] = 0
+
 # แถบขั้นตอน (จองที่ไว้ก่อน รู้ว่ามีรูปไหมแล้วค่อยเติม)
 steps_box = st.empty()
 
@@ -201,10 +205,10 @@ with left:
         file = None
         if mode == ":material/upload: อัปโหลดรูป":
             st.html('<h3 class="card-title">อัปโหลดรูป</h3><div class="card-sub">กดปุ่ม "เลือกรูป" หรือลากรูปมาวางในกรอบประ<br>jpg / png ไม่เกิน ' + str(MAX_MB) + ' MB · สลับโหมดแล้วรูปเดิมจะหายนะ</div>' + known)
-            file = st.file_uploader("เลือกไฟล์รูป", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
+            file = st.file_uploader("เลือกไฟล์รูป", type=["jpg", "jpeg", "png"], label_visibility="collapsed", key="upload_" + str(st.session_state["round"]))
         else:
             st.html('<h3 class="card-title">ถ่ายรูปจากกล้อง</h3><div class="card-sub">ถ้ากล้องไม่ขึ้น ให้กดอนุญาตกล้องในเบราว์เซอร์ หรือสลับไปโหมดอัปโหลดแทน</div>' + known)
-            file = st.camera_input("ถ่ายรูปผักผลไม้", label_visibility="collapsed")
+            file = st.camera_input("ถ่ายรูปผักผลไม้", label_visibility="collapsed", key="camera_" + str(st.session_state["round"]))
 
     # เปิดรูป + เช็กไฟล์ (รูปใหญ่ใช้เวลานิดนึง เลยขึ้นข้อความหมุนๆ ให้รู้ว่ากำลังทำอยู่)
     img = None
@@ -292,6 +296,11 @@ with left:
             result = result + '<div class="result-wrap"><div class="result-tag">' + tag_html(to_base64(small), "--", "-- %", "รอโมเดล") + '</div></div>'
         result = result + '</div>'
         st.html(result)
+        if predicted:
+            # ปุ่มล้างรูปเดิม แล้วใส่ชิ้นต่อไปได้เลย ไม่ต้องเลื่อนขึ้นไปกดลบรูป
+            if st.button("สแกนชิ้นต่อไป", key="next_item"):
+                st.session_state["round"] = st.session_state["round"] + 1
+                st.rerun()
         if predicted == False:
             st.warning("โหลดโมเดลไม่ได้: เช็กว่ามีไฟล์ models/best_model.keras กับ models/class_info.json และติดตั้ง tensorflow แล้ว")
 
