@@ -2,7 +2,11 @@
 # ฟังก์ชันจัดการรูปอยู่ใน utils.py / หน้าตาเว็บอยู่ใน style.css
 
 import os
+import io
+import csv
 import json
+import zipfile
+from datetime import datetime
 import numpy as np
 import streamlit as st
 from PIL import Image
@@ -19,6 +23,8 @@ folder = os.path.dirname(os.path.abspath(__file__))
 HERO_FILE = os.path.join(folder, "static", "hero.jpg")   # รูปหัวเว็บ เอารูปจาก dataset มาวางชื่อนี้
 MODEL_FILE = os.path.join(folder, "models", "best_model.keras")   # โมเดลที่ฟิวเทรน
 CLASS_FILE = os.path.join(folder, "models", "class_info.json")    # รายชื่อ 28 คลาส เรียงตามลำดับที่โมเดลตอบ
+FEEDBACK_DIR = os.path.join(folder, "feedback")                  # เก็บรูปที่ผู้ใช้บอกว่าโมเดลทายผิด (ไม่ขึ้น GitHub)
+FEEDBACK_CSV = os.path.join(FEEDBACK_DIR, "feedback.csv")
 
 # ชื่อผักผลไม้ภาษาไทย (ชื่อคลาสในโมเดลเป็นอังกฤษ เช่น Apple__Healthy)
 THAI_NAMES = {
@@ -148,6 +154,41 @@ def predict(model, class_names, data):
         status = name.split("__")[1]
         top.append([fruit, status, float(probs[i]) * 100])
     return top
+
+
+# เก็บรูป + คำตอบที่ถูกที่ผู้ใช้บอก ไว้ให้ฟิวเอาไปเทรนใหม่
+# ชื่อคลาสเขียนแบบเดียวกับตอนเทรน เช่น Apple__Rotten จะได้เอาไปใช้ต่อได้เลย
+def save_feedback(img, top, correct_class):
+    os.makedirs(os.path.join(FEEDBACK_DIR, "images"), exist_ok=True)
+
+    # ตั้งชื่อรูปตามเวลา จะได้ไม่ซ้ำกัน
+    now = datetime.now()
+    image_name = now.strftime("%Y%m%d-%H%M%S-%f") + ".jpg"
+
+    # ย่อรูปไม่ให้ใหญ่เกิน 900px ก่อนเซฟ ประหยัดที่
+    temp = img.copy()
+    temp.thumbnail((900, 900))
+    temp.save(os.path.join(FEEDBACK_DIR, "images", image_name), format="JPEG", quality=90)
+
+    # ถ้ายังไม่มีไฟล์ csv ให้เขียนหัวตารางก่อน
+    new_file = not os.path.exists(FEEDBACK_CSV)
+    with open(FEEDBACK_CSV, "a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        if new_file:
+            writer.writerow(["time", "image", "predicted_class", "predicted_conf", "correct_class"])
+        predicted_class = top[0][0] + "__" + top[0][1]
+        writer.writerow([now.strftime("%Y-%m-%d %H:%M:%S"), "images/" + image_name, predicted_class, round(top[0][2], 1), correct_class])
+
+
+# รวม csv กับรูปทั้งหมดเป็นไฟล์ zip ไว้ให้ทีมกดดาวน์โหลด
+def feedback_zip():
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        for root, dirs, files in os.walk(FEEDBACK_DIR):
+            for name in files:
+                path = os.path.join(root, name)
+                z.write(path, os.path.relpath(path, FEEDBACK_DIR))
+    return buf.getvalue()
 
 
 st.set_page_config(page_title="KhadSan AI", page_icon="🍎", layout="wide")
@@ -313,6 +354,31 @@ with left:
             if st.button("สแกนชิ้นต่อไป", key="next_item"):
                 st.session_state["round"] = st.session_state["round"] + 1
                 st.rerun()
+
+            # ----- ผู้ใช้บอกได้ว่าโมเดลทายผิด (human-in-the-loop) -----
+            # key มีเลขรอบต่อท้าย กดสแกนชิ้นต่อไปแล้วช่องพวกนี้จะเริ่มใหม่
+            r = str(st.session_state["round"])
+            with st.expander("ผลนี้ผิด? บอกคำตอบที่ถูกให้เรา"):
+                if st.session_state.get("sent_" + r):
+                    st.success("ขอบคุณ บันทึกแล้ว ทีมจะเอาไปใช้ปรับปรุงโมเดล")
+                else:
+                    st.caption("กดส่งแล้ว ระบบจะเก็บรูปนี้กับคำตอบที่ถูกไว้ ให้ทีมตรวจแล้วเอาไปเทรนโมเดลใหม่")
+                    fruits = list(THAI_NAMES.keys())
+                    pick = st.selectbox("ชนิดที่ถูก", fruits, index=fruits.index(fruit) if fruit in fruits else 0,
+                                        format_func=lambda k: THAI_NAMES[k] + " (" + k + ")", key="fb_fruit_" + r)
+                    state = st.radio("สภาพที่ถูก", ["สด", "เน่า"], index=0 if status == "Healthy" else 1,
+                                     horizontal=True, key="fb_state_" + r)
+                    if st.button("ส่งคำตอบ", key="fb_send_" + r):
+                        if state == "สด":
+                            correct = pick + "__Healthy"
+                        else:
+                            correct = pick + "__Rotten"
+                        try:
+                            save_feedback(img, top, correct)
+                            st.session_state["sent_" + r] = True
+                            st.rerun()
+                        except Exception:
+                            st.error("บันทึกไม่สำเร็จ ลองใหม่อีกครั้งนะ")
         if predicted == False:
             st.warning("โหลดโมเดลไม่ได้: เช็กว่ามีไฟล์ models/best_model.keras กับ models/class_info.json และติดตั้ง tensorflow แล้ว")
 
@@ -397,6 +463,28 @@ steps = steps + step_html("2", "ปรับรูป", step2_sub, s2)
 steps = steps + step_html("3", "AI ตรวจ", "บอกชนิด สด/เน่า และ % ความมั่นใจ", s3)
 steps = steps + '</div>'
 steps_box.html(th(steps))
+
+
+# ===== สำหรับทีม: ดาวน์โหลดรูปที่ผู้ใช้แจ้งว่าผิด =====
+# ต้องใส่รหัสก่อน คนทั่วไปจะได้โหลดรูปของคนอื่นไม่ได้
+# รหัสตั้งไว้ในไฟล์ .streamlit/secrets.toml (ไม่ขึ้น GitHub) ถ้าไม่มีไฟล์นี้ ส่วนนี้จะไม่โชว์
+try:
+    team_password = st.secrets["FEEDBACK_PASSWORD"]
+except Exception:
+    team_password = ""
+if team_password != "":
+    with st.expander("สำหรับทีมพัฒนา: ดาวน์โหลดข้อมูลที่ผู้ใช้แจ้ง"):
+        typed = st.text_input("รหัสทีม", type="password", key="team_pw")
+        if typed == team_password:
+            if os.path.exists(FEEDBACK_CSV):
+                with open(FEEDBACK_CSV, encoding="utf-8") as f:
+                    count = len(f.readlines()) - 1
+                st.write("มีที่ผู้ใช้แจ้งแล้ว " + str(count) + " รูป")
+                st.download_button("ดาวน์โหลด (csv + รูป)", feedback_zip(), file_name="feedback.zip", mime="application/zip")
+            else:
+                st.write("ยังไม่มีใครแจ้ง")
+        elif typed != "":
+            st.error("รหัสไม่ถูก")
 
 
 # ===== แถบท้ายเว็บ =====
