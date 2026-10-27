@@ -19,6 +19,7 @@ SIZE_TEXT = str(IMG_SIZE) + "×" + str(IMG_SIZE)   # ข้อความขน
 MAX_MB = 10             # กันคนอัปรูปใหญ่เกิน
 MAX_PIXELS = 50000000   # กันรูปที่ไฟล์เล็กแต่จำนวนพิกเซลเยอะผิดปกติ (กินแรมจนเว็บค้าง) 50 ล้านพิกเซลพอสำหรับกล้องมือถือ
 LOW_CONF = 60           # ความมั่นใจต่ำกว่านี้ (%) จะขึ้นเตือนให้ลองถ่ายใหม่ (ปรับได้)
+IN_SCOPE_MIN = 50       # โมเดลต้องคิดว่าเป็น 5 ชนิดที่เรารับอย่างน้อยกี่ % ถ้าน้อยกว่านี้ น่าจะเป็นของอย่างอื่น ให้ตรวจซ้ำ
 folder = os.path.dirname(os.path.abspath(__file__))
 HERO_FILE = os.path.join(folder, "static", "hero.jpg")   # รูปหัวเว็บ เอารูปจาก dataset มาวางชื่อนี้
 MODEL_FILE = os.path.join(folder, "models", "best_model.keras")   # โมเดลที่ฟิวเทรน
@@ -26,12 +27,11 @@ CLASS_FILE = os.path.join(folder, "models", "class_info.json")    # รายช
 FEEDBACK_DIR = os.path.join(folder, "feedback")                  # เก็บรูปที่ผู้ใช้บอกว่าโมเดลทายผิด (ไม่ขึ้น GitHub)
 FEEDBACK_CSV = os.path.join(FEEDBACK_DIR, "feedback.csv")
 
-# ชื่อผักผลไม้ภาษาไทย (ชื่อคลาสในโมเดลเป็นอังกฤษ เช่น Apple__Healthy)
+# ผลไม้ที่เว็บรับ 5 ชนิด x (สด/เน่า) = 10 คลาส  ชื่อไทย (ชื่อคลาสในโมเดลเป็นอังกฤษ เช่น Apple__Healthy)
+# อยากเพิ่ม/ลดชนิด แก้ตรงนี้ที่เดียว (ต้องเป็นชนิดที่โมเดลรู้จัก)
 THAI_NAMES = {
-    "Apple": "แอปเปิล", "Banana": "กล้วย", "Bellpepper": "พริกหยวก", "Carrot": "แครอท",
-    "Cucumber": "แตงกวา", "Grape": "องุ่น", "Guava": "ฝรั่ง", "Jujube": "พุทรา",
-    "Mango": "มะม่วง", "Orange": "ส้ม", "Pomegranate": "ทับทิม", "Potato": "มันฝรั่ง",
-    "Strawberry": "สตรอว์เบอร์รี", "Tomato": "มะเขือเทศ",
+    "Apple": "แอปเปิล", "Banana": "กล้วย", "Strawberry": "สตรอว์เบอร์รี",
+    "Tomato": "มะเขือเทศ", "Orange": "ส้ม",
 }
 
 
@@ -145,15 +145,32 @@ def load_model():
 # ให้โมเดลทาย แล้วเอา 3 อันดับแรก
 # คืนเป็น list เช่น [["Apple", "Healthy", 97.2], ["Pomegranate", "Healthy", 2.6], ...]
 def predict(model, class_names, data):
-    probs = model.predict(data, verbose=0)[0]   # ได้ความน่าจะเป็นของทั้ง 28 คลาส
-    order = np.argsort(probs)[::-1]             # เรียงลำดับคลาสจากคะแนนมากไปน้อย
+    probs = model.predict(data, verbose=0)[0]   # ได้ความน่าจะเป็นของทุกคลาสที่โมเดลรู้จัก
+
+    # เอาเฉพาะคลาสของผลไม้ 5 ชนิดที่เว็บรับ (โมเดลตอนนี้รู้จัก 28 คลาส เลยตัดที่เหลือทิ้ง)
+    # ถ้าฟิวส่งโมเดลใหม่ที่มี 10 คลาสพอดี บรรทัดพวกนี้ก็ไม่ตัดอะไรออก ใช้ได้เหมือนเดิม
+    keep = []
+    for i in range(len(class_names)):
+        if class_names[i].split("__")[0] in THAI_NAMES:
+            keep.append(i)
+
+    # รวมคะแนนของคลาสที่เหลือ แล้วหารให้รวมกันได้ 100% ใหม่
+    total = 0
+    for i in keep:
+        total = total + float(probs[i])
+
+    # เรียงจากคะแนนมากไปน้อย เอา 3 อันดับแรก
+    keep.sort(key=lambda i: probs[i], reverse=True)
     top = []
-    for i in order[:3]:
+    for i in keep[:3]:
         name = class_names[i]                   # เช่น "Apple__Healthy"
         fruit = name.split("__")[0]
         status = name.split("__")[1]
-        top.append([fruit, status, float(probs[i]) * 100])
-    return top
+        top.append([fruit, status, float(probs[i]) / total * 100])
+
+    # in_scope = โมเดลคิดว่ารูปนี้เป็น 1 ใน 5 ชนิดที่เรารับกี่ % (ใช้เช็กว่าเป็นผลไม้อื่นหรือของอื่นหรือเปล่า)
+    in_scope = total / float(np.sum(probs)) * 100
+    return top, in_scope
 
 
 # เก็บรูป + คำตอบที่ถูกที่ผู้ใช้บอก ไว้ให้ฟิวเอาไปเทรนใหม่
@@ -211,7 +228,7 @@ hero = '<div class="hero">'
 # ซ้าย : ข้อความ
 hero = hero + '<div class="hero-left">'
 hero = hero + '<span class="caption">ถึงทีมคัดแยกสินค้า,</span>'
-hero = hero + '<h1 class="display">ผักผลไม้ชิ้นนี้<br>ยังสดอยู่ไหม?</h1>'
+hero = hero + '<h1 class="display">ผลไม้ชิ้นนี้<br>ยังสดอยู่ไหม?</h1>'
 hero = hero + '<div class="body">ไม่ต้องไล่ดูด้วยตาทีละชิ้นจนล้า ถ่ายรูปหรืออัปโหลดรูปมา แล้วให้โมเดล CNN ที่ทีมเรา fine-tune ช่วยบอกชนิด และบอกว่า<span class="marker">สดหรือเน่า</span> ก่อนของเสียจะหลุดไปถึงมือลูกค้า</div>'
 hero = hero + '<a class="pill" href="#scan">เริ่มสแกน ' + ICON_ARROW + '</a>'
 hero = hero + '</div>'
@@ -231,7 +248,7 @@ st.html(th(hero))
 
 
 # ===== ส่วนสแกน =====
-st.html(th('<h2 id="scan" class="section-title">สแกนผักผลไม้</h2><div class="section-sub"><span class="caption">ทีละชิ้นนะ ถ่ายให้ชัด พื้นหลังเรียบๆ แสงพอ</span></div>'))
+st.html(th('<h2 id="scan" class="section-title">สแกนผลไม้</h2><div class="section-sub"><span class="caption">ทีละชิ้นนะ ถ่ายให้ชัด พื้นหลังเรียบๆ แสงพอ</span></div>'))
 
 # นับรอบการสแกน ใช้ตั้งชื่อ key ของช่องใส่รูป (กด "สแกนชิ้นต่อไป" = รอบใหม่ = ได้ช่องใส่รูปว่างๆ)
 if "round" not in st.session_state:
@@ -252,7 +269,7 @@ with left:
                                     default=":material/upload: อัปโหลดรูป", required=True,
                                     key="mode", label_visibility="collapsed", width="stretch")
 
-        # บอกก่อนใส่รูปเลยว่าโมเดลรู้จักอะไรบ้าง (ผักผลไม้อื่นโมเดลจะเดาเป็น 14 ชนิดนี้อยู่ดี)
+        # บอกก่อนใส่รูปเลยว่าโมเดลรู้จักอะไรบ้าง (ผลไม้อื่นหรือของอื่น โมเดลอาจเดาเป็น 5 ชนิดนี้อยู่ดี)
         known = '<div class="known">โมเดลรู้จัก ' + str(len(THAI_NAMES)) + ' ชนิด: ' + ' · '.join(THAI_NAMES.values()) + '</div>'
 
         file = None
@@ -261,7 +278,7 @@ with left:
             file = st.file_uploader("เลือกไฟล์รูป", type=["jpg", "jpeg", "png"], label_visibility="collapsed", key="upload_" + str(st.session_state["round"]))
         else:
             st.html(th('<h3 class="card-title">ถ่ายรูปจากกล้อง</h3><div class="card-sub">ถ้ากล้องไม่ขึ้น ให้กดอนุญาตกล้องในเบราว์เซอร์ หรือสลับไปโหมดอัปโหลดแทน</div>' + known))
-            file = st.camera_input("ถ่ายรูปผักผลไม้", label_visibility="collapsed", key="camera_" + str(st.session_state["round"]))
+            file = st.camera_input("ถ่ายรูปผลไม้", label_visibility="collapsed", key="camera_" + str(st.session_state["round"]))
 
     # เปิดรูป + เช็กไฟล์ (รูปใหญ่ใช้เวลานิดนึง เลยขึ้นข้อความหมุนๆ ให้รู้ว่ากำลังทำอยู่)
     img = None
@@ -298,7 +315,7 @@ with left:
         try:
             with st.spinner("AI กำลังตรวจ... (ครั้งแรกต้องโหลดโมเดล อาจนานหน่อย)"):
                 model, class_names = load_model()
-                top = predict(model, class_names, data)
+                top, in_scope = predict(model, class_names, data)
             predicted = True
         except Exception:
             predicted = False
@@ -328,8 +345,9 @@ with left:
                     others = others + " · "
                 others = others + THAI_NAMES.get(top[i][0], top[i][0]) + " " + other_status + " " + pct_text(top[i][2])
 
-            # ความมั่นใจต่ำ = ไม่ปั๊มสด/เน่า ให้ปั๊มตรวจซ้ำแทน และไม่ติ๊กช่อง
-            if conf < LOW_CONF:
+            # ไม่น่าจะใช่ 5 ชนิดที่รับ หรือความมั่นใจต่ำ = ไม่ปั๊มสด/เน่า ให้ปั๊มตรวจซ้ำแทน และไม่ติ๊กช่อง
+            not_sure = conf < LOW_CONF or in_scope < IN_SCOPE_MIN
+            if not_sure:
                 stamp = "ตรวจซ้ำ"
                 tick = ""
                 answer = "ไม่แน่ใจ"
@@ -340,7 +358,9 @@ with left:
 
             result = result + '<div class="card-sub">ผลจาก AI ใช้ช่วยคัด ไม่ใช่คำตัดสินสุดท้าย</div>'
             result = result + '<div class="result-wrap"><div class="result-tag">' + tag_html(to_base64(small), kind, conf_text, stamp, tick, others) + '</div></div>'
-            if conf < LOW_CONF:
+            if in_scope < IN_SCOPE_MIN:
+                result = result + '<div class="tag-warn">รูปนี้อาจไม่ใช่ผลไม้ 5 ชนิดที่รับ ลองใช้รูปแอปเปิล กล้วย สตรอว์เบอร์รี มะเขือเทศ หรือส้ม</div>'
+            elif conf < LOW_CONF:
                 result = result + '<div class="tag-warn">ความมั่นใจต่ำ ลองถ่ายใหม่ให้เห็นชิ้นเดียวชัดๆ พื้นหลังเรียบ</div>'
             # ข้อความซ่อนไว้ให้โปรแกรมอ่านหน้าจออ่านผลออกเสียงทันทีที่ทายเสร็จ (role="alert")
             result = result + '<div class="sr-only" role="alert">ผลตรวจ: ' + THAI_NAMES.get(fruit, fruit) + ' ' + answer + ' ความมั่นใจ ' + str(round(conf, 1)) + ' เปอร์เซ็นต์</div>'
@@ -391,7 +411,7 @@ with right:
     box = box + '<h3 class="card-title">กรอบสแกน</h3>'
     if img is not None:
         box = box + '<div class="card-sub">รูปที่ใส่เข้ามา</div>'
-        box = box + '<div class="frame has-img"><img class="frame-photo" src="' + to_base64(img) + '" alt="รูปผักผลไม้ที่ใส่เข้ามา">' + corners
+        box = box + '<div class="frame has-img"><img class="frame-photo" src="' + to_base64(img) + '" alt="รูปผลไม้ที่ใส่เข้ามา">' + corners
         box = box + '<div class="scan-line"></div></div>'
         box = box + '<div class="status">' + ICON_CHECK + ' เตรียมรูปเสร็จแล้ว</div>'
     elif error != "":
@@ -402,7 +422,7 @@ with right:
     else:
         box = box + '<div class="card-sub">ยังไม่มีรูป</div>'
         box = box + '<div class="frame">' + corners
-        box = box + '<div class="frame-msg">' + ICON_CAMERA + '<span class="caption">ใส่รูปผักผลไม้ก่อนนะ</span></div></div>'
+        box = box + '<div class="frame-msg">' + ICON_CAMERA + '<span class="caption">ใส่รูปผลไม้ก่อนนะ</span></div></div>'
     box = box + '</div>'
     st.html(th(box))
 
@@ -441,7 +461,7 @@ if img is not None:
     s2 = "done"
     if predicted == False:
         s3 = "wait"
-    elif conf < LOW_CONF:
+    elif not_sure:
         s3 = "unsure"
     else:
         s3 = "done"
