@@ -1,10 +1,15 @@
 // JavaScript ของหน้าเว็บ KhadSan AI (ทีมเขียนเอง ไม่ได้ดึงจากที่อื่น)
-// ทำ 4 อย่าง
+// ทำ 5 อย่าง
 //   1) เลือกรูปแล้ว โชว์รูปตัวอย่างให้ดูก่อนกดตรวจ (รูปยังไม่ถูกส่งไปไหน จนกว่าจะกดปุ่ม)
 //   2) ไฟล์ใหญ่เกินกำหนด บอกเลยตั้งแต่ตอนเลือก ไม่ต้องรอส่ง
-//   3) กดตรวจแล้ว ปุ่มเปลี่ยนเป็น "AI กำลังตรวจ…" และกดซ้ำไม่ได้
-//   4) โหมดกล้อง : เปิดกล้อง (ได้ทั้งเว็บแคมบนคอม และกล้องหลังมือถือ) -> กดถ่าย -> รูปเข้าช่องเลือกรูปเหมือนอัปโหลด
-// ถ้าเบราว์เซอร์ปิด JavaScript ไฟล์นี้จะไม่ทำงาน แต่เว็บยังส่งรูปได้ตามปกติ (แค่ไม่มีปุ่มเปิดกล้อง)
+//   3) กดตรวจแล้ว ปุ่ม + ขั้นตอน + กรอบสแกน บอกว่า "AI กำลังตรวจ…" และกดซ้ำไม่ได้
+//   4) โหมดกล้อง : เปิดกล้อง (เว็บแคมบนคอม / กล้องหลังมือถือ) -> กดถ่าย -> รูปเข้าช่องเลือกรูปเหมือนอัปโหลด
+//   5) ได้ผลแล้ว ติ๊กขั้นตอนทีละขั้น (~5 วิ) แล้วค่อยโชว์ผล ให้เห็นว่า AI ทำอะไรไปทีละขั้น
+// ถ้าเบราว์เซอร์ปิด JavaScript ไฟล์นี้จะไม่ทำงาน แต่เว็บยังส่งรูปและเห็นผลได้ตามปกติ
+
+var page = document.documentElement;
+var live = document.getElementById("live");      // ข้อความให้โปรแกรมอ่านหน้าจออ่าน
+var steps = document.querySelectorAll(".step");
 
 // หน้าเว็บมีฟอร์มใส่รูปแค่อันเดียว
 var form = document.querySelector(".scan-form");
@@ -14,6 +19,10 @@ var warn = form.querySelector(".drop-warn");
 var button = form.querySelector(".scan-btn");
 var maxMb = Number(form.getAttribute("data-max-mb"));
 var preview = null;   // รูปตัวอย่าง สร้างตอนเลือกรูปครั้งแรก
+
+// กรอบสแกนตอนยังไม่มีผล (มีแค่หน้าเริ่มต้น) ถ้ามี จะเอารูปที่เลือกไปโชว์ในกรอบนี้แทน
+var stage = document.querySelector(".frame-empty");
+var stageSub = document.querySelector(".frame-sub");
 
 
 // ----- 1) และ 2) ตอนเลือกรูป -----
@@ -45,13 +54,21 @@ input.addEventListener("change", function () {
     // สร้างรูปตัวอย่างครั้งแรกครั้งเดียว ครั้งต่อไปใช้อันเดิม
     if (!preview) {
         preview = document.createElement("img");
-        preview.className = "preview";
         preview.alt = "รูปที่เลือกไว้";
         // เบราว์เซอร์เปิดรูปนี้ไม่ได้ (เช่น ไฟล์ HEIC) ก็แค่ไม่โชว์ตัวอย่าง ยังส่งตรวจได้
         preview.addEventListener("error", function () {
             preview.hidden = true;
         });
-        drop.appendChild(preview);
+        if (stage) {
+            // หน้าเริ่มต้น : โชว์ในกรอบสแกนใหญ่ด้านขวา (กรอบจะได้ไม่บอกว่า "ยังไม่มีรูป" ทั้งที่เลือกแล้ว)
+            preview.className = "frame-photo";
+            stage.insertBefore(preview, stage.firstChild);
+            stage.classList.add("has-img");
+        } else {
+            // หน้าผลตรวจ : กรอบสแกนมีรูปผลอยู่แล้ว เลยโชว์รูปเล็กในช่องเลือกรูปแทน
+            preview.className = "preview";
+            drop.appendChild(preview);
+        }
     }
 
     // ลบรูปตัวอย่างเก่าออกจากหน่วยความจำก่อน แล้วโชว์รูปใหม่
@@ -60,6 +77,9 @@ input.addEventListener("change", function () {
     }
     preview.src = URL.createObjectURL(file);
     preview.hidden = false;
+    if (stageSub) {
+        stageSub.textContent = "รูปที่เลือก · กดตรวจได้เลย";
+    }
 });
 
 
@@ -71,15 +91,29 @@ form.addEventListener("submit", function (event) {
         return;
     }
     form.classList.add("is-busy");
+    page.classList.add("busy-page");          // มุมกรอบสแกนกะพริบ (ดูใน style.css)
     button.setAttribute("aria-disabled", "true");
     closeCamera();   // ส่งรูปแล้ว ปิดกล้องด้วย ไฟกล้องจะได้ดับ
+
+    // ขั้นตอน : 1 เสร็จ (ส่งรูปแล้ว) / 2 กำลังทำ (รอเซิร์ฟเวอร์ตอบจริง)
+    for (var i = 0; i < steps.length; i++) {
+        steps[i].classList.remove("now");
+    }
+    if (steps.length == 3) {
+        steps[1].classList.add("now");
+    }
+    live.textContent = "ส่งรูปแล้ว AI กำลังตรวจ รอสักครู่";
 });
 
 
 // กดปุ่ม Back กลับมาหน้านี้ เบราว์เซอร์บางตัวจำหน้าเดิมไว้ทั้งหน้า ปุ่มจะค้างเป็น "กำลังตรวจ" เลยคืนค่าให้
 window.addEventListener("pageshow", function () {
     form.classList.remove("is-busy");
+    page.classList.remove("busy-page");
     button.removeAttribute("aria-disabled");
+    for (var i = 0; i < steps.length; i++) {
+        steps[i].classList.remove("now");
+    }
 });
 
 
@@ -160,6 +194,9 @@ form.querySelector(".cam-shot").addEventListener("click", function () {
             input.files = box.files;
             input.dispatchEvent(new Event("change"));   // ให้โค้ดข้อ 1) ทำรูปตัวอย่างให้
             closeCamera();
+            // ถ่ายเสร็จ เลื่อนไปที่ปุ่มตรวจเลย ไม่ต้องเลื่อนหาเอง
+            button.scrollIntoView({ block: "center", behavior: "smooth" });
+            button.focus();
         } catch (e) {
             showCamMsg("เบราว์เซอร์นี้ใส่รูปจากกล้องไม่ได้ ใช้ปุ่มเลือกรูปจากเครื่องแทนนะ");
         }
@@ -175,3 +212,53 @@ form.querySelector(".cam-close").addEventListener("click", function () {
 input.addEventListener("click", function () {
     closeCamera();
 });
+
+
+// ----- 5) ได้ผลแล้ว : ติ๊กขั้นตอนทีละขั้น แล้วค่อยโชว์ผล -----
+// html มี class "play" (ใส่ไว้ใน index.html ตอนมีผลตรวจ) = ให้เล่น
+// เวลาแต่ละขั้น (มิลลิวินาที) รวมกันประมาณ 5 วิ
+var stepTimes = [800, 2000, 2200];
+var stepIndex = 0;
+var timer = null;
+var skipRow = document.querySelector(".skip-row");
+
+function nextStep() {
+    // ขั้นก่อนหน้า : เลิกหมุน แล้วโชว์ติ๊ก
+    if (stepIndex > 0) {
+        steps[stepIndex - 1].classList.remove("now");
+        steps[stepIndex - 1].classList.add("shown");
+    }
+    // ยังมีขั้นต่อไป : ให้หมุน แล้วรอเวลาของขั้นนั้น
+    if (stepIndex < steps.length) {
+        steps[stepIndex].classList.add("now");
+        timer = setTimeout(nextStep, stepTimes[stepIndex]);
+        stepIndex = stepIndex + 1;
+    } else {
+        showResult();
+    }
+}
+
+// โชว์ผลทั้งหมด (เรียกตอนเล่นจบ หรือกด "ดูผลทันที")
+function showResult() {
+    clearTimeout(timer);
+    for (var i = 0; i < steps.length; i++) {
+        steps[i].classList.remove("now");
+        steps[i].classList.add("shown");
+    }
+    page.classList.remove("play");
+    if (skipRow) {
+        skipRow.hidden = true;
+    }
+    var summaryText = document.getElementById("summary-text");
+    if (summaryText) {
+        live.textContent = summaryText.textContent;
+    }
+}
+
+if (page.classList.contains("play")) {
+    if (skipRow) {
+        skipRow.hidden = false;
+        skipRow.querySelector(".skip-anim").addEventListener("click", showResult);
+    }
+    nextStep();
+}

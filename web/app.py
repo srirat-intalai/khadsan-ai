@@ -8,7 +8,7 @@ import io
 import json
 import base64
 from flask import Flask, render_template, request
-from PIL import Image, ImageOps, ImageDraw, ImageFont
+from PIL import Image, ImageOps, ImageDraw, ImageFont, ImageStat
 
 
 folder = os.path.dirname(os.path.abspath(__file__))
@@ -19,6 +19,7 @@ MAX_MB = 10             # กันคนอัปรูปใหญ่เกิ
 MAX_PIXELS = 50000000   # กันรูปที่ไฟล์เล็กแต่พิกเซลเยอะผิดปกติ (กินแรมจนเว็บค้าง)
 CONF_MIN = 0.25         # กรอบที่โมเดลมั่นใจต่ำกว่านี้ ไม่นับว่าเจอผลไม้
 LOW_CONF = 60           # ความมั่นใจต่ำกว่านี้ (%) ให้ขึ้น "ตรวจซ้ำ"
+HIGH_CONF = 85          # ความมั่นใจตั้งแต่นี้ขึ้นไป (%) ถือว่ามั่นใจสูง
 MAX_FRUITS = 30         # โชว์รายการไม่เกินกี่ลูก (รูปที่มีผลไม้เยอะมาก หน้าเว็บจะได้ไม่ยาวเกิน)
 SAME_FRUIT = 0.5        # กรอบ 2 กรอบทับกันเกินครึ่ง = ผลไม้ลูกเดียวกัน เก็บไว้แค่กรอบที่มั่นใจกว่า
 
@@ -138,7 +139,7 @@ def detect(img):
         else:
             state = "bad"
         fruits.append({"fruit": fruit, "thai": THAI_NAMES.get(fruit, fruit), "quality": quality,
-                       "conf": round(conf, 1), "box": box, "state": state})
+                       "conf": round(conf), "box": box, "state": state})   # % ปัดเป็นเลขกลม อ่านง่าย
 
     fruits.sort(key=left_side)
     for i in range(len(fruits)):
@@ -171,7 +172,7 @@ def draw_boxes(img, fruits):
     draw = ImageDraw.Draw(out)
     line = max(5, round(max(out.size) / 120))       # รูปใหญ่ เส้นก็หนาขึ้น
     ring = max(2, line // 2)                        # ความหนาขอบครีมรอบนอก
-    font_size = max(16, round(max(out.size) / 30))
+    font_size = max(16, round(max(out.size) / 22))  # ใหญ่พอให้อ่านเลขออกบนจอมือถือ
     font = ImageFont.load_default(size=font_size)
 
     # วาดกรอบใหญ่ก่อน กรอบเล็กทีหลัง กรอบเล็กจะไม่โดนกรอบใหญ่ทับ
@@ -194,23 +195,85 @@ def draw_boxes(img, fruits):
     return out
 
 
-# ตัดรูปผลไม้แต่ละลูกออกมาเป็นรูปเล็ก ไว้โชว์ในรายการ
-def add_thumbs(img, fruits):
+# พื้นที่ที่กรอบ 2 กรอบทับกัน
+def overlap(a, b):
+    w = min(a["box"][2], b["box"][2]) - max(a["box"][0], b["box"][0])
+    h = min(a["box"][3], b["box"][3]) - max(a["box"][1], b["box"][1])
+    if w <= 0 or h <= 0:
+        return 0
+    return w * h
+
+
+# ทีละลูก : ตัดรูปเล็กไว้โชว์ + เขียนเหตุผลว่าทำไม AI ตอบแบบนี้
+# เหตุผลใช้แค่ข้อมูลจริง ไม่แต่งเอง
+#   1) สิ่งที่ AI ให้มา : ชนิด สด/เน่า และ % ความมั่นใจ
+#   2) สิ่งที่วัดจากรูปได้จริง ที่อาจทำให้ AI มั่นใจน้อยลง : ลูกเล็ก ชิดขอบ ซ้อนกัน มืด
+def add_details(img, fruits):
+    width, height = img.size
     for f in fruits:
         x1 = int(f["box"][0])
         y1 = int(f["box"][1])
         # กันกรอบเล็กจนไม่มีพื้นที่ (กว้าง/สูง 0) ตัดรูปไม่ได้
         x2 = max(int(f["box"][2]), x1 + 1)
         y2 = max(int(f["box"][3]), y1 + 1)
-        f["thumb"] = to_base64(img.crop([x1, y1, x2, y2]), max_size=120)
+        crop = img.crop([x1, y1, x2, y2])
+        f["thumb"] = to_base64(crop, max_size=120)
+
+        # ระดับความมั่นใจเป็นคำพูด
+        if f["conf"] >= HIGH_CONF:
+            f["level"] = "มั่นใจสูง"
+        elif f["conf"] >= LOW_CONF:
+            f["level"] = "มั่นใจพอใช้"
+        else:
+            f["level"] = "มั่นใจต่ำ"
+
+        # เหตุผลหลัก
+        if f["state"] == "good":
+            f["reason"] = "สีและผิวคล้ายรูป" + f["thai"] + "สดที่ AI เคยเรียน"
+        elif f["state"] == "bad":
+            f["reason"] = "เจอลักษณะคล้ายรูป" + f["thai"] + "เน่าที่ AI เคยเรียน"
+        else:
+            if f["quality"] == "Good":
+                lean = "สด"
+            else:
+                lean = "เน่า"
+            f["reason"] = "AI เอนไปทาง" + lean + " แต่มั่นใจไม่ถึง " + str(LOW_CONF) + "% เลยให้คนดูซ้ำ"
+
+        # สิ่งที่อาจทำให้ AI มั่นใจน้อยลง (บอกเฉพาะลูกที่ยังไม่มั่นใจสูง)
+        notes = []
+        if f["conf"] < HIGH_CONF:
+            if box_area(f) < width * height * 0.015:
+                notes.append("ลูกนี้เล็กในรูป เห็นรายละเอียดผิวน้อย")
+            if x1 <= 2 or y1 <= 2 or x2 >= width - 2 or y2 >= height - 2:
+                notes.append("อยู่ชิดขอบรูป อาจเห็นไม่ครบลูก")
+            for other in fruits:
+                if other is not f and overlap(f, other) > box_area(f) * 0.2:
+                    notes.append("ซ้อนกับลูกอื่น")
+                    break
+            if ImageStat.Stat(crop.convert("L")).mean[0] < 60:
+                notes.append("ส่วนนี้ของรูปค่อนข้างมืด")
+        f["notes"] = notes
 
 
-# นับว่า สด / เน่า / ตรวจซ้ำ อย่างละกี่ลูก
+# นับว่า สด / เน่า / ตรวจซ้ำ อย่างละกี่ลูก + จดเลขลูกที่ต้องคัดออก / ต้องดูซ้ำ
 def count_states(fruits):
-    summary = {"total": len(fruits), "good": 0, "bad": 0, "unsure": 0}
+    summary = {"total": len(fruits), "good": 0, "bad": 0, "unsure": 0, "bad_nums": [], "unsure_nums": []}
     for f in fruits:
         summary[f["state"]] = summary[f["state"]] + 1
+        if f["state"] == "bad":
+            summary["bad_nums"].append("#" + str(f["num"]))
+        if f["state"] == "unsure":
+            summary["unsure_nums"].append("#" + str(f["num"]))
     return summary
+
+
+# ใช้ตอนเรียงรายการ : เน่า (ต้องคัดออก) ขึ้นก่อน แล้วตรวจซ้ำ แล้วสด  (เลขลูกยังเป็นเลขเดิมตามตำแหน่งในรูป)
+def list_order(f):
+    if f["state"] == "bad":
+        return 0
+    if f["state"] == "unsure":
+        return 1
+    return 2
 
 
 # ===== หน้าเว็บ =====
@@ -244,15 +307,20 @@ def scan():
     except Exception:
         return render_template("index.html", photo=to_base64(img), error="ตอนนี้ AI ตรวจไม่ได้ ลองใหม่อีกครั้งนะ")
 
-    add_thumbs(img, fruits)
+    add_details(img, fruits)
+    summary = count_states(fruits)
+    photo = to_base64(draw_boxes(img, fruits), max_size=1200)
     rgb, small_size = color_mean(img)
+
+    # รายการในหน้าเว็บ : ลูกเน่าขึ้นก่อน (sort แบบนี้ลำดับเดิมในกลุ่มเดียวกันไม่เปลี่ยน)
+    fruits.sort(key=list_order)
     more = len(fruits) - MAX_FRUITS
     if more < 0:
         more = 0
     return render_template("index.html",
-        photo=to_base64(draw_boxes(img, fruits), max_size=1200),
-        fruits=fruits[:MAX_FRUITS], more=more, summary=count_states(fruits),
-        rgb=rgb, small_size=small_size, original_size=img.size)
+        photo=photo, fruits=fruits[:MAX_FRUITS], more=more, summary=summary,
+        rgb=rgb, small_size=small_size, original_size=img.size,
+        low_conf=LOW_CONF, high_conf=HIGH_CONF)
 
 
 # ไฟล์ใหญ่เกิน MAX_MB

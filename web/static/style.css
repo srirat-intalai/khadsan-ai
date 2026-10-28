@@ -147,7 +147,32 @@ h1, h2, h3 {font-family: 'Mitr', sans-serif;}
 
 .step-done .step-num, .step-done .mark {color: var(--olive);}
 .step-done .tick-box {border-color: var(--olive);}
-.step-unsure .tick-box {border-style: dashed; border-color: var(--muted);}
+.step-unsure .tick-box, .step-none .tick-box {border-style: dashed; border-color: var(--muted);}
+
+/* ข้อความ "กำลังทำ…" + วงหมุน แทนช่องติ๊ก ตอนขั้นนั้นกำลังทำงาน (scan.js ใส่ class now) */
+.mark-wait {display: none; align-items: center; gap: 10px; margin-top: 10px; min-height: 28px; font-family: 'Mali', cursive; font-size: 17px; font-weight: 500; color: var(--olive);}
+.step.now .mark {display: none;}
+.step.now .mark-wait {display: flex;}
+.step.now .step-num {color: var(--olive);}
+/* วงหมุนวาดด้วยเส้นหมึกเขียว ขาดไปช่วงนึง */
+.spin {flex: none; width: 20px; height: 20px; border: 2.5px solid var(--olive); border-right-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;}
+@keyframes spin {
+    to {transform: rotate(360deg);}
+}
+/* ตอนเล่นติ๊กทีละขั้น : ขั้นที่ยังไม่ถึง ซ่อนติ๊กไว้ก่อน (ยังจองที่ไว้ หน้าไม่กระตุก) */
+.play .step:not(.shown) .mark {visibility: hidden; animation: show-late 0s 6s forwards;}
+.play .step:not(.shown):not(.now) .step-num {color: var(--ink);}
+/* ผลตรวจซ่อนไว้ระหว่างเล่น เล่นจบแล้วค่อยๆ โผล่ขึ้นมา */
+.result-layout {transition: opacity 0.5s ease-out, transform 0.5s ease-out;}
+.play .result-layout {opacity: 0; transform: translateY(12px); animation: show-late 0.5s ease-out 6s forwards;}
+/* กันพัง : ถ้า scan.js โหลดไม่ได้ (เช่นเน็ตหลุด) ผ่านไป 6 วิ ผลก็โผล่เองอยู่ดี ไม่ค้างหายไปตลอด */
+@keyframes show-late {
+    to {opacity: 1; transform: none; visibility: visible;}
+}
+/* ปุ่ม "ดูผลทันที" ข้ามการเล่น */
+.skip-row {margin: -14px 0 20px 0;}
+.skip-anim {background: none; border: none; padding: 0 4px; min-height: 44px; font-family: inherit; font-size: 15px; color: var(--olive); text-decoration: underline; text-underline-offset: 3px; cursor: pointer;}
+.skip-anim:focus-visible {outline: 2px solid var(--olive); outline-offset: 2px; border-radius: 4px;}
 /* ขั้นที่ 1 ตอนรูปใช้ไม่ได้ ใช้สีอิฐแบบเดียวกับข้อความ error */
 .step-error .step-num, .step-error .mark {color: var(--rotten);}
 .step-error .tick-box {border-color: var(--rotten);}
@@ -204,6 +229,9 @@ button.pill:active {transform: translateY(1px); background: var(--olive-soft);}
 .drop-ok img {vertical-align: -2px;}
 /* ยังไม่เลือกรูป: ปุ่มดูจางๆ เส้นประ (ยังกดได้ เบราว์เซอร์จะเตือนให้เลือกรูปก่อน) */
 form:has(input[type="file"]:invalid) .scan-btn {border-style: dashed; color: var(--muted) !important; box-shadow: none;}
+/* เลือกรูปแล้ว : ปุ่มตรวจกลายเป็นปุ่มหลัก สีเขียวทึบ เด่นสุดในฟอร์ม */
+form:has(input[type="file"]:valid) .scan-btn {background: var(--olive); border-color: var(--olive); color: var(--paper) !important;}
+form:has(input[type="file"]:valid) .scan-btn .btn-ready img {filter: brightness(0) invert(1);}
 /* เลือกรูปแล้ว: ช่องเลือกรูปเป็นเส้นทึบสีเขียว + ข้อความ "เลือกรูปแล้ว" */
 form:has(input[type="file"]:valid) .drop {border-style: solid; border-color: var(--olive); background: var(--olive-soft);}
 form:has(input[type="file"]:valid) .drop-hint {display: none;}
@@ -212,7 +240,13 @@ form:has(input[type="file"]:valid) .drop-ok {display: block;}
 .btn-busy {display: none;}
 .is-busy .btn-ready {display: none;}
 .is-busy .btn-busy {display: inline;}
-.is-busy .scan-btn {background: var(--olive-soft); cursor: progress;}
+.is-busy .scan-btn {background: var(--olive-soft) !important; color: var(--olive) !important; cursor: progress;}
+/* ระหว่างรอผล มุมกรอบสแกนกะพริบเบาๆ ให้รู้ว่ากำลังทำงาน */
+.busy-page .frame .corner {animation: corner-pulse 0.9s ease-in-out infinite alternate;}
+@keyframes corner-pulse {
+    from {opacity: 1;}
+    to {opacity: 0.3;}
+}
 
 /* รูปตัวอย่างที่เลือกไว้ (scan.js สร้างให้) */
 .preview {display: block; max-width: 100%; max-height: 200px; width: auto; margin-top: 12px; border-radius: 8px; border: 1.5px solid var(--ink); object-fit: contain; background: var(--paper);}
@@ -221,7 +255,7 @@ form:has(input[type="file"]:valid) .drop-ok {display: block;}
 
 /* ===== โหมดกล้อง ===== */
 .cam-row {display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px;}
-button.pill.cam-open {background: var(--olive-soft);}
+button.pill.cam-open {background: var(--paper);}
 .cam-open img {width: 22px; height: 22px;}
 .cam-or {font-size: 14px; color: var(--muted);}
 .cam {margin-bottom: 16px;}
@@ -263,7 +297,8 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
     align-items: center;
     justify-content: center;
 }
-.frame-photo {width: 100%; height: 100%; object-fit: contain; background: var(--ink);}
+.frame-photo {width: 100%; height: 100%; object-fit: contain; background: var(--dew);}
+.has-img .frame-msg {display: none;}   /* เลือกรูปแล้ว ไม่ต้องโชว์ "ใส่รูปผลไม้ก่อนนะ" */
 .frame-msg {text-align: center; color: var(--muted); font-size: 15px;}
 .frame-msg .caption, .frame-msg .msg {display: block; margin-top: 8px;}
 .frame-error .frame-msg {color: var(--rotten);}
@@ -278,10 +313,14 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 /* คนที่ตั้งเครื่องให้ลดการเคลื่อนไหว ปุ่มไม่ต้องขยับ */
 @media (prefers-reduced-motion: reduce) {
     .pill, .file-btn {transition: none; transform: none !important;}
+    .spin, .busy-page .frame .corner {animation: none;}
+    .result-layout {transition: none;}
 }
 
 /* แถบเขียวใต้กรอบ บอกว่าตรวจเสร็จแล้ว (ไม่ใช่ปุ่ม) */
 .status {margin-top: 14px; display: flex; align-items: center; gap: 10px; background: var(--olive-soft); color: var(--olive); border-radius: 10px; padding: 10px 14px; font-size: 15px; font-weight: 500;}
+.status-bad {background: var(--dew); color: var(--rotten);}      /* มีลูกเน่า ไม่ใช่สีเขียว */
+.status-unsure {background: var(--dew); color: var(--muted);}
 
 
 /* ===== ผลตรวจ (ป้ายตรวจคุณภาพเอียงนิดๆ) ===== */
@@ -306,7 +345,10 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 /* ตราปั๊ม "ตรวจซ้ำ" ตอนโมเดลไม่แน่ใจ ใช้สีหมึกจาง เส้นประ */
 .stamp-unsure {color: var(--muted); border-color: var(--muted); border-style: dashed;}
 /* เตือนตอนความมั่นใจต่ำ */
-.tag-warn {margin-top: 10px; color: var(--rotten); font-size: 15px;}
+.tag-warn {margin-top: 10px; color: var(--muted); font-size: 15px;}
+.tag-bad {color: var(--rotten); font-weight: 600;}   /* เลขลูกที่ต้องคัดออก */
+/* ทางลัดไปสแกนรูปต่อไป (โชว์แค่บนมือถือ) */
+.jump-next {display: none;}
 
 
 /* ===== ข้อมูลรูปหลังปรับ ===== */
@@ -365,14 +407,16 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
     /* จอเล็ก คอลัมน์ซ้ายขวาเรียงลงมาเป็นแถวเดียว */
     .columns {grid-template-columns: 1fr; gap: 0;}
     /* ตอนมีผล: ยกการ์ดทุกใบออกมาเรียงใหม่ ให้รูปตีกรอบอยู่ติดป้ายตรวจ รายการอยู่ใต้รูป
-       ป้ายตรวจ -> รูปตีกรอบ -> รายการทีละลูก -> สแกนรูปต่อไป -> ข้อมูลสำหรับอาจารย์ */
+       ป้ายตรวจ -> รูปตีกรอบ -> รายการทีละลูก -> AI ตัดสินจากอะไร -> สแกนรูปต่อไป -> ข้อมูลสำหรับอาจารย์ */
     .result-layout {display: flex; flex-direction: column; gap: 0; align-items: stretch;}
     .result-col {display: contents;}
     .r-tag {order: 1;}
     .r-photo {order: 2;}
     .r-list {order: 3;}
-    .r-next {order: 4;}
-    .r-data {order: 5;}
+    .r-why {order: 5;}
+    .r-next {order: 6;}
+    .r-data {order: 7;}
+    .jump-next {display: inline-flex; align-items: center; min-height: 44px; margin-top: 12px; padding: 8px 20px; border: 1.5px solid var(--ink); border-radius: 20px; color: var(--ink); text-decoration: none; font-weight: 500;}
     .page {padding: 16px 16px 0 16px;}
     .card {padding: 20px;}
     .footer {padding: 32px 28px 40px 28px; border-radius: 36px 36px 0 0;}
@@ -391,7 +435,15 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 .fruit-item:last-child {border-bottom: none;}
 .fruit-num {flex: none; width: 32px; height: 32px; border-radius: 50%; color: var(--paper); font-weight: 600; display: flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums;}
 .fruit-thumb {flex: none; width: 56px; height: 56px; border-radius: 8px; border: 1.5px solid var(--ink); object-fit: cover;}
+.fruit-text {min-width: 0;}
 .fruit-name {font-weight: 500;}
+.fruit-state {font-size: 15px;}
+.fruit-why {font-size: 14px; color: var(--ink); margin-top: 2px;}
+.fruit-notes {font-size: 14px; color: var(--muted); margin-top: 2px;}
+/* AI ตัดสินจากอะไร */
+.why-list {margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 15px; line-height: 1.6;}
+.why-list b {font-weight: 600; color: var(--cocoa);}
+.why-tips {margin-top: 14px; padding: 10px 14px; background: var(--dew); border-radius: 10px; font-size: 15px;}
 .fruit-conf {color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums;}
 .good {background: var(--olive);}
 .bad {background: var(--rotten);}
