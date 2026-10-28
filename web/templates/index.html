@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KhadSan AI</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍎</text></svg>">
+<!-- ฟอนต์ : Anuphan เนื้อหา / Mitr หัวข้อ / Mali ลายมือ -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600&family=Mali:wght@400;500;600&family=Mitr:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<!-- JavaScript ที่ทีมเขียนเอง (ดูรูปก่อนส่ง / ปุ่มกำลังตรวจ / กันกดซ้ำ) ถ้าปิด JS เว็บยังส่งรูปได้ปกติ -->
+<script src="{{ url_for('static', filename='scan.js') }}" defer></script>
+</head>
+<body>
+<div class="page">
+
+{# ===== ป้ายตรวจคุณภาพแบบว่าง (ใช้บนหัวเว็บ) ===== #}
+{% macro empty_tag() %}
+<div class="tag-card">
+    <div class="tag-hole"></div>
+    <div class="tag-title">ป้ายตรวจคุณภาพ</div>
+    <div class="tag-row"><span class="tag-key">ชนิด</span><span class="tag-line"></span></div>
+    <div class="tag-row"><span class="tag-key">สถานะ</span><span><span class="box"></span>สด &nbsp; <span class="box"></span>เน่า</span></div>
+    <div class="tag-row"><span class="tag-key">ความมั่นใจ</span><span class="tag-line">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; %</span></div>
+    <div class="tag-foot">ตรวจโดย KhadSan AI</div>
+</div>
+{% endmacro %}
+
+{# ===== 1 ข้อในเช็กลิสต์ขั้นตอน state = done / unsure / error / "" ===== #}
+{% macro step(num, title, sub, state) %}
+<div class="step{% if state %} step-{{ state }}{% endif %}">
+    <div class="step-num">{{ num }}</div>
+    <div>
+        <div class="step-title">{{ title }}</div>
+        <div class="step-sub">{{ sub }}</div>
+        <div class="mark"><span class="tick-box">
+            {%- if state == "done" %}{{ icons.tick|safe }}{% endif -%}
+            {%- if state == "error" %}{{ icons.cross|safe }}{% endif -%}
+        </span>
+            {%- if state == "done" %}เสร็จแล้ว{% endif -%}
+            {%- if state == "unsure" %}มีที่ต้องตรวจซ้ำ{% endif -%}
+            {%- if state == "error" %}ใช้รูปนี้ไม่ได้{% endif -%}
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+{# ===== มุม 4 มุมของกรอบสแกน ===== #}
+{% macro corners() %}<div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>{% endmacro %}
+
+{# ===== ฟอร์มใส่รูป (ใช้ทั้งตอนเริ่ม และตอน "สแกนรูปต่อไป") ===== #}
+{% macro scan_form(button_text) %}
+<form class="scan-form" method="post" action="{{ url_for('scan') }}#scan" enctype="multipart/form-data" data-max-mb="{{ max_mb }}">
+    {# ===== โหมดกล้อง : ซ่อนไว้ก่อน scan.js จะโชว์ให้เองถ้าเครื่องนี้เปิดกล้องได้ ===== #}
+    <div class="cam-row" hidden>
+        <button class="pill cam-open" type="button">{{ icons.camera|safe }} เปิดกล้อง</button>
+        <span class="cam-or">หรือเลือกรูปจากเครื่องด้านล่าง</span>
+    </div>
+    <div class="cam" hidden>
+        {# ภาพสดจากกล้อง (ยังไม่ส่งไปไหน จนกว่าจะกด ถ่าย แล้วกดตรวจ) #}
+        <video class="cam-video" playsinline muted></video>
+        <div class="cam-actions">
+            <button class="pill cam-shot" type="button">ถ่าย</button>
+            <button class="pill cam-close" type="button">ปิดกล้อง</button>
+        </div>
+    </div>
+    <div class="cam-msg" role="alert" hidden></div>
+
+    <label class="drop">
+        <span class="drop-label">รูปผลไม้</span>
+        {# ช่องเลือกไฟล์ของจริงซ่อนไว้ (ปุ่มเดิมของเบราว์เซอร์เป็นภาษาอังกฤษ) แล้วโชว์ปุ่มไทยของเราแทน กดตรงไหนในกรอบก็เปิดได้ #}
+        <input class="file-input" type="file" name="photo" accept="image/jpeg,image/png,image/webp" required>
+        <span class="file-btn" aria-hidden="true">เลือกรูปจากเครื่อง</span>
+        {# ข้อความ 2 อันนี้สลับกันเองด้วย CSS ตอนเลือกรูปแล้ว (ไม่ต้องใช้ JavaScript) #}
+        <span class="drop-hint">ยังไม่ได้เลือกรูป</span>
+        <span class="drop-ok">{{ icons.check|safe }} เลือกรูปแล้ว กด "{{ button_text }}" ได้</span>
+        {# เตือนไฟล์ใหญ่ เติมข้อความโดย scan.js (รูปตัวอย่าง scan.js สร้างใส่ตรงนี้เองตอนเลือกรูป) #}
+        <span class="drop-warn" role="alert" hidden></span>
+    </label>
+    <button class="pill scan-btn" type="submit">
+        <span class="btn-ready">{{ button_text }} {{ icons.arrow|safe }}</span>
+        <span class="btn-busy">AI กำลังตรวจ…</span>
+    </button>
+</form>
+{% endmacro %}
+
+
+<!-- ===== แถบบน ===== -->
+<div class="nav"><div class="brand">{{ icons.leaf|safe }}KhadSan AI</div></div>
+
+
+<!-- ===== หัวเว็บ ===== -->
+<div class="hero">
+    <div class="hero-left">
+        <span class="caption">ถึงทีมคัดแยกสินค้า,</span>
+        <h1 class="display">ผลไม้ชิ้นนี้<br>ยังสดอยู่ไหม?</h1>
+        <div class="body">ไม่ต้องไล่ดูด้วยตาทีละชิ้นจนล้า ถ่ายรูปหรืออัปโหลดรูปมา แล้วให้โมเดล YOLOv8 (CNN) ที่ทีมเรา fine-tune ช่วยบอกชนิด และบอกว่า<span class="marker">สดหรือเน่า</span> ก่อนของเสียจะหลุดไปถึงมือลูกค้า</div>
+        <a class="pill" href="#scan">เริ่มสแกน {{ icons.arrow|safe }}</a>
+    </div>
+    <div class="hero-right">
+        <div class="hero-photo" style="background-image: url({{ url_for('static', filename='hero.jpg') }});"></div>
+        <div class="hero-tag">{{ empty_tag() }}</div>
+        <div class="sticker" style="top: 0px; right: 0px; transform: rotate(12deg);">{{ icons.apple|safe }}</div>
+        <div class="sticker" style="top: 300px; right: 6px; transform: rotate(-14deg);">{{ icons.sticker_leaf|safe }}</div>
+        <div class="sticker" style="top: 20px; left: 40px; transform: rotate(8deg);">{{ icons.spark|safe }}</div>
+    </div>
+</div>
+
+
+<!-- ===== ส่วนสแกน ===== -->
+<h2 id="scan" class="section-title">สแกนผลไม้</h2>
+<div class="section-sub"><span class="caption">ถ่ายได้ทีละหลายลูก ให้เห็นทั้งลูก แสงพอ</span></div>
+
+{# สถานะของแต่ละขั้น #}
+{% set s1 = "" %}{% set s2 = "" %}{% set s3 = "" %}
+{% if summary %}
+    {% set s1 = "done" %}{% set s2 = "done" %}
+    {% if summary.total == 0 or summary.unsure > 0 %}{% set s3 = "unsure" %}{% else %}{% set s3 = "done" %}{% endif %}
+{% elif error %}
+    {% set s1 = "error" %}
+{% endif %}
+<div class="steps">
+    {{ step("1", "ใส่รูป", "ถ่ายรูปหรืออัปโหลด", s1) }}
+    {{ step("2", "ตีกรอบผลไม้", "AI หาผลไม้ทุกลูกในรูป", s2) }}
+    {{ step("3", "AI ตรวจ", "บอกชนิด สด/เน่า และ % ความมั่นใจ ทีละลูก", s3) }}
+</div>
+
+
+{% if summary %}
+{# ================= มีผลตรวจแล้ว : ผลขึ้นก่อน =================
+   คอม  : ซ้าย = ป้ายตรวจ + รายการทีละลูก / ขวา = รูปตีกรอบ + สแกนรูปต่อไป + ข้อมูลสำหรับอาจารย์
+   มือถือ: ป้ายตรวจ -> รูปตีกรอบ -> รายการ -> สแกนรูปต่อไป -> ข้อมูลสำหรับอาจารย์ (จัดลำดับใน style.css) #}
+<div class="result-layout">
+
+    <div class="result-col">
+        <!-- ป้ายตรวจคุณภาพ (คำตอบหลัก) -->
+        <div class="card r-tag">
+            <h3 class="card-title">ผลตรวจ</h3>
+            <div class="card-sub">ผลจาก AI ใช้ช่วยคัด ไม่ใช่คำตัดสินสุดท้าย</div>
+            <div class="result-wrap"><div class="result-tag">
+                <div class="tag-card">
+                    <div class="tag-hole"></div>
+                    {% if summary.total == 0 %}
+                    <div class="stamp stamp-unsure">ตรวจซ้ำ</div>
+                    {% elif summary.bad > 0 %}
+                    <div class="stamp stamp-rotten">พบเน่า</div>
+                    {% elif summary.unsure > 0 %}
+                    <div class="stamp stamp-unsure">ตรวจซ้ำ</div>
+                    {% else %}
+                    <div class="stamp">สดทั้งหมด</div>
+                    {% endif %}
+                    <div class="tag-title">ป้ายตรวจคุณภาพ</div>
+                    <div class="tag-row"><span class="tag-key">พบทั้งหมด</span><span class="tag-line">{{ summary.total }} ลูก</span></div>
+                    <div class="tag-row"><span class="tag-key">สด</span><span class="tag-line">{{ summary.good }} ลูก</span></div>
+                    <div class="tag-row"><span class="tag-key">เน่า</span><span class="tag-line">{{ summary.bad }} ลูก</span></div>
+                    <div class="tag-row"><span class="tag-key">ตรวจซ้ำ</span><span class="tag-line">{{ summary.unsure }} ลูก</span></div>
+                    <div class="tag-foot">ตรวจโดย KhadSan AI</div>
+                </div>
+            </div></div>
+            {% if summary.total == 0 %}
+            <div class="tag-warn">ไม่เจอผลไม้ 5 ชนิดที่รับในรูปนี้ ลองถ่ายใหม่ให้เห็นผลไม้ชัดๆ</div>
+            {% endif %}
+            {# โปรแกรมอ่านหน้าจอจะอ่านสรุปนี้ก่อนรายการ #}
+            <div class="sr-only">ผลตรวจ: พบผลไม้ {{ summary.total }} ลูก สด {{ summary.good }} เน่า {{ summary.bad }} ตรวจซ้ำ {{ summary.unsure }}</div>
+        </div>
+
+        {% if summary.total > 0 %}
+        <!-- รายการทีละลูก (เลขตรงกับเลขบนกรอบในรูป) -->
+        <div class="card r-list">
+            <h3 class="card-title">ทีละลูก</h3>
+            <div class="card-sub">เลขตรงกับเลขบนกรอบในรูป</div>
+            <ol class="fruit-list">
+                {% for f in fruits %}
+                <li class="fruit-item">
+                    <span class="fruit-num {{ f.state }}">{{ f.num }}</span>
+                    <img class="fruit-thumb" src="{{ f.thumb }}" alt="">
+                    <div>
+                        <div class="fruit-name">{{ f.thai }} ({{ f.fruit }}) ·
+                            {% if f.state == "good" %}<span class="fruit-state-good">สด</span>
+                            {% elif f.state == "bad" %}<span class="fruit-state-bad">เน่า</span>
+                            {% else %}<span class="fruit-state-unsure">ตรวจซ้ำ</span>{% endif %}
+                        </div>
+                        <div class="fruit-conf">ความมั่นใจ {{ f.conf }}%{% if f.state == "unsure" %} · AI เอนไปทาง{% if f.quality == "Good" %}สด{% else %}เน่า{% endif %}{% endif %}</div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ol>
+            {% if more > 0 %}<div class="tag-others">และอีก {{ more }} ลูก (ดูกรอบในรูป)</div>{% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="result-col">
+        <!-- รูปที่ตีกรอบแล้ว -->
+        <div class="card r-photo">
+            <h3 class="card-title">กรอบสแกน</h3>
+            {% if summary.total > 0 %}<div class="card-sub">กรอบสีเขียว = สด · สีอิฐ = เน่า · สีเทา = ตรวจซ้ำ</div>{% else %}<div class="card-sub">รูปที่ใส่เข้ามา</div>{% endif %}
+            <div class="frame has-img has-result">
+                <img class="frame-photo" src="{{ photo }}" alt="รูปผลไม้ที่ใส่เข้ามา พร้อมกรอบที่ AI ตีไว้">
+                {{ corners() }}
+            </div>
+            <div class="status">{{ icons.check|safe }} ตรวจเสร็จแล้ว</div>
+        </div>
+
+        <!-- สแกนรูปต่อไป (ฟอร์มเล็ก ใต้ผล ไม่ต้องเลื่อนขึ้นไปข้างบน) -->
+        <div class="card r-next">
+            <h3 class="card-title">สแกนรูปต่อไป</h3>
+            <div class="card-sub">ถ่ายหรือเลือกรูปใหม่ได้เลย</div>
+            {{ scan_form("ตรวจรูปนี้") }}
+        </div>
+
+        <!-- ข้อมูลที่ส่งเข้าโมเดล (สำหรับอาจารย์ พับไว้ กดเปิดได้) -->
+        <details class="card r-data">
+            <summary class="card-title">ข้อมูลที่ส่งเข้าโมเดล <span class="summary-note">(สำหรับอาจารย์)</span></summary>
+            <div class="card-sub">ค่าสีเฉลี่ย (0–255) หลังย่อด้านยาวสุดเป็น {{ img_size }} · YOLO เติมขอบให้เป็นจัตุรัสเองข้างใน</div>
+            {% set names = ["R สีแดง", "G สีเขียว", "B สีน้ำเงิน"] %}
+            {% for i in range(3) %}
+            <div class="bar-row">
+                <div class="bar-head"><b>{{ names[i] }}</b><span>{{ rgb[i] }}</span></div>
+                <div class="bar-bg"><div class="bar-fill" style="width: {{ (rgb[i] / 255 * 100)|round|int }}%;"></div></div>
+            </div>
+            {% endfor %}
+            <span class="chip">รูปเดิม {{ original_size[0] }}×{{ original_size[1] }}</span>
+            <span class="chip">ย่อเหลือ {{ small_size[0] }}×{{ small_size[1] }}</span>
+            <div class="chip-note">รูปถูกย่อแบบไม่บีบสัดส่วน ผลไม้จะไม่ผิดรูป</div>
+        </details>
+    </div>
+
+</div>
+
+{% else %}
+{# ================= ยังไม่มีผล (เริ่มต้น / รูปใช้ไม่ได้) ================= #}
+<div class="columns">
+
+    <!-- ----- ซ้าย : ใส่รูป ----- -->
+    <div>
+        <div class="card">
+            <h3 class="card-title">ใส่รูปผลไม้</h3>
+            <div class="card-sub">เปิดกล้องถ่ายเลย หรือเลือกรูปจากเครื่อง<br>jpg / png ไม่เกิน {{ max_mb }} MB</div>
+            <div class="known">โมเดลรู้จัก {{ thai_names|length }} ชนิด: {{ thai_names|join(" · ") }}</div>
+            {{ scan_form("ตรวจเลย") }}
+        </div>
+
+        {% if error %}
+        <div class="error-box" role="alert">{{ error }}</div>
+        {% elif not model_ready %}
+        <div class="error-box">ยังไม่มีไฟล์โมเดล (models/best_detect.pt) ทีมกำลังเทรนอยู่</div>
+        {% endif %}
+    </div>
+
+    <!-- ----- ขวา : กรอบสแกน ----- -->
+    <div>
+        <div class="card">
+            <h3 class="card-title">กรอบสแกน</h3>
+            {% if photo %}
+            <div class="card-sub">รูปที่ใส่เข้ามา</div>
+            <div class="frame has-img">
+                <img class="frame-photo" src="{{ photo }}" alt="รูปผลไม้ที่ใส่เข้ามา">
+                {{ corners() }}
+            </div>
+            {% elif error %}
+            <div class="card-sub">ใช้รูปนี้ไม่ได้</div>
+            <div class="frame frame-error">
+                {{ corners() }}
+                <div class="frame-msg">{{ icons.alert|safe }}<span class="msg">ลองใส่รูปใหม่ · ดูสาเหตุใต้ช่องใส่รูป</span></div>
+            </div>
+            {% else %}
+            <div class="card-sub">ยังไม่มีรูป</div>
+            <div class="frame">
+                {{ corners() }}
+                <div class="frame-msg">{{ icons.camera|safe }}<span class="caption">ใส่รูปผลไม้ก่อนนะ</span></div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endif %}
+
+
+<!-- ===== แถบท้ายเว็บ ===== -->
+<div class="footer">
+    <div class="footer-brand">KhadSan AI</div>
+    <span class="caption">คัดของสด ก่อนของเน่าหลุดถึงมือลูกค้า</span>
+    <div class="footer-small">โปรเจกต์วิชา CS461 AI for Business Solutions · โมเดล YOLOv8 ที่ทีมเทรนด้วย Fruits Quality Dataset (Roboflow, CC BY 4.0)</div>
+</div>
+
+</div>
+</body>
+</html>

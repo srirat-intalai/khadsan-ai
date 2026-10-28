@@ -6,3 +6,6 @@ __pycache__/
 # รูปที่ผู้ใช้ส่งมา กับรหัสทีม ห้ามขึ้น GitHub
 feedback/
 .streamlit/secrets.toml
+
+# dataset ไฟล์ใหญ่ ไม่ขึ้น GitHub (โหลดใหม่ได้จาก Roboflow / Kaggle)
+train/*/
