@@ -137,6 +137,7 @@ def plot_history(name):
     axes[0].plot(h["epoch"], h["train/total_loss"], label="train")
     axes[0].plot(h["epoch"], h["val/total_loss"], label="validation")
     axes[0].set_title(name + " : Loss")
+    axes[0].set_yscale("log")   # สเกล log : ถ้ามีการทดลองไหน loss พุ่งสูงมาก เส้นอื่นจะไม่แบนติดศูนย์
     axes[0].set_xlabel("epoch")
     axes[0].legend()
     axes[1].plot(h["epoch"], h["metrics/mAP50(B)"], label="mAP50")
@@ -159,6 +160,7 @@ def plot_compare(names, file_name, title):
         axes[0].plot(h["epoch"], h["val/total_loss"], label=name)
         axes[1].plot(h["epoch"], h["metrics/mAP50(B)"], label=name)
     axes[0].set_title(title + " : Validation Loss")
+    axes[0].set_yscale("log")   # สเกล log : RMSProp เคย loss พุ่งไป 4 หมื่น ถ้าไม่ใช้ log เส้นอื่นแบนจนอ่านไม่ได้
     axes[1].set_title(title + " : Validation mAP50")
     for ax in axes:
         ax.set_xlabel("epoch")

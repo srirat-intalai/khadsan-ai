@@ -1,0 +1,17 @@
+{
+  "class_names": [
+    "Apple_Bad",
+    "Apple_Good",
+    "Banana_Bad",
+    "Banana_Good",
+    "Lime_Bad",
+    "Lime_Good",
+    "Orange_Bad",
+    "Orange_Good",
+    "Pomegranate_Bad",
+    "Pomegranate_Good"
+  ],
+  "img_size": 640,
+  "chosen_experiment": "5_cosine_lr",
+  "ultralytics_version": "8.4.191"
+}
