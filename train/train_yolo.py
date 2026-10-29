@@ -14,6 +14,7 @@
 #
 # วิธีรัน:  python train_yolo.py --data datasets/data_5fruits/data.yaml --out โฟลเดอร์เก็บผล
 # ทดสอบกับรูปจากแหล่งอื่นด้วย:  เติม --external datasets/external_test
+# รอบ 2 (เพิ่มรูป Kaggle) :  เติม --more-data datasets/data_5fruits/data_more.yaml --only 5_cosine_lr,8_cosine_more_data
 # ทดสอบโค้ดเร็วๆ (รูปน้อย 1 epoch):  เติม --quick
 
 import os
@@ -41,6 +42,8 @@ PATIENCE = 10           # Early Stopping: ถ้าคะแนน validation �
 SEED = 42
 
 EXTERNAL_DIR = ""       # ชุดทดสอบภายนอก (prepare_data.py ส่วนที่ 2 ทำไว้) ไม่ใส่ = ข้าม
+MORE_DATA = ""          # รอบ 2 : data_more.yaml (ชุดเทรนเดิม + รูป Kaggle) ไม่ใส่ = ข้ามการทดลองที่ 8
+ONLY = []               # รันแค่การทดลองที่ระบุ เช่น --only 5_cosine_lr,8_cosine_more_data (ไม่ใส่ = รันทั้งหมด)
 
 QUICK_TEST = False
 for i in range(len(sys.argv)):
@@ -50,6 +53,10 @@ for i in range(len(sys.argv)):
         OUT_DIR = sys.argv[i + 1]
     if sys.argv[i] == "--external":
         EXTERNAL_DIR = sys.argv[i + 1]
+    if sys.argv[i] == "--more-data":
+        MORE_DATA = sys.argv[i + 1]
+    if sys.argv[i] == "--only":
+        ONLY = sys.argv[i + 1].split(",")
     if sys.argv[i] == "--quick":
         QUICK_TEST = True
 
@@ -83,6 +90,8 @@ EXPERIMENTS = [
     {"name": "5_cosine_lr", "model": "yolov8n.pt", "optimizer": "SGD", "lr0": 0.01, "cos_lr": True, "lrf": 0.01, "batch": 16, "weight_decay": 0.0005},
     {"name": "6_batch32", "model": "yolov8n.pt", "optimizer": "SGD", "lr0": 0.01, "cos_lr": False, "lrf": 1.0, "batch": 32, "weight_decay": 0.0005},
     {"name": "7_no_weight_decay", "model": "yolov8n.pt", "optimizer": "SGD", "lr0": 0.01, "cos_lr": False, "lrf": 1.0, "batch": 16, "weight_decay": 0.0},
+    # รอบ 2 : ค่าเดียวกับตัวที่ดีที่สุด (5_cosine_lr) แต่ชุดเทรนเพิ่มรูป Kaggle (val/test ชุดเดิม เทียบกันได้ยุติธรรม)
+    {"name": "8_cosine_more_data", "model": "yolov8n.pt", "optimizer": "SGD", "lr0": 0.01, "cos_lr": True, "lrf": 0.01, "batch": 16, "weight_decay": 0.0005, "more_data": True},
 ]
 
 
@@ -204,8 +213,12 @@ def run_experiment(exp):
     print("\n========== เริ่ม", exp["name"], "==========")
     start = time.time()
     model = YOLO(exp["model"])
+    # ข้อมูลที่ใช้เทรน : การทดลองที่ 8 ใช้ชุดที่เพิ่มรูป Kaggle นอกนั้นใช้ชุดเดิม
+    train_data = DATA_YAML
+    if "more_data" in exp:
+        train_data = MORE_DATA
     model.train(
-        data=DATA_YAML,
+        data=train_data,
         epochs=EPOCHS,
         imgsz=IMG_SIZE,
         batch=exp["batch"],
@@ -282,7 +295,8 @@ def save_best(row, best_path, test_m):
 # ===== ทดสอบกับรูปจากแหล่งอื่น (external test) =====
 # รูปพวกนี้ไม่มีกรอบ มีแค่ชื่อโฟลเดอร์บอกคำตอบ (เช่น Apple_Bad)
 # เลยดูแค่กรอบที่โมเดลมั่นใจที่สุดในรูป ว่าบอกชนิดและสด/เน่าถูกไหม
-def test_external(model_path):
+# tag = ชื่อการทดลอง ใช้ตั้งชื่อไฟล์ผล จะได้เทียบได้หลายโมเดล
+def test_external(model_path, tag):
     model = YOLO(model_path)
     rows = []
     table = {}   # table[ของจริง][ที่โมเดลทาย] = จำนวนรูป
@@ -317,14 +331,14 @@ def test_external(model_path):
                 right_fresh = right_fresh + 1
         rows.append([true_name, len(images), hit, round(hit / max(len(images), 1), 4)])
 
-    with open(os.path.join(RESULT_DIR, "external_test.csv"), "w", newline="", encoding="utf-8") as f:
+    with open(os.path.join(RESULT_DIR, "external_" + tag + "_accuracy.csv"), "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["class", "images", "correct", "accuracy"])
         for row in rows:
             writer.writerow(row)
     # ตารางว่ารูปแต่ละคลาส โมเดลทายว่าอะไรบ้าง (แถว = ของจริง, คอลัมน์ = ที่โมเดลทาย)
     columns = CLASS_NAMES + ["not_found"]
-    with open(os.path.join(RESULT_DIR, "external_confusion.csv"), "w", newline="", encoding="utf-8") as f:
+    with open(os.path.join(RESULT_DIR, "external_" + tag + "_confusion.csv"), "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["actual \\ predicted"] + columns)
         for true_name in table:
@@ -332,13 +346,13 @@ def test_external(model_path):
             for c in columns:
                 row.append(table[true_name].get(c, 0))
             writer.writerow(row)
-    with open(os.path.join(RESULT_DIR, "external_summary.txt"), "w", encoding="utf-8") as f:
-        f.write("external test (Kaggle Fruit Diseases, รูปที่โมเดลไม่เคยเห็น)\n")
+    with open(os.path.join(RESULT_DIR, "external_" + tag + "_summary.txt"), "w", encoding="utf-8") as f:
+        f.write("external test " + tag + " (Kaggle, รูปที่โมเดลไม่เคยเห็น)\n")
         f.write("จำนวนรูป " + str(all_count) + "\n")
         f.write("ทายถูกทั้งชนิดและสด/เน่า " + str(round(right_class / max(all_count, 1), 4)) + "\n")
         f.write("ทายชนิดผลไม้ถูก " + str(round(right_fruit / max(all_count, 1), 4)) + "\n")
         f.write("ทายสด/เน่าถูก " + str(round(right_fresh / max(all_count, 1), 4)) + "\n")
-    print(open(os.path.join(RESULT_DIR, "external_summary.txt"), encoding="utf-8").read())
+    print(open(os.path.join(RESULT_DIR, "external_" + tag + "_summary.txt"), encoding="utf-8").read())
 
 
 # ===== เริ่มทำงาน =====
@@ -362,6 +376,10 @@ for r in summary:
         best_name = r["name"]
 
 for exp in EXPERIMENTS:
+    if len(ONLY) > 0 and exp["name"] not in ONLY:
+        continue
+    if "more_data" in exp and MORE_DATA == "":
+        continue
     if exp["name"] in done:
         print("ข้าม", exp["name"], "(ทำเสร็จแล้ว)")
         continue
@@ -385,8 +403,13 @@ info = {
 with open(os.path.join(MODEL_DIR, "class_info.json"), "w", encoding="utf-8") as f:
     json.dump(info, f, ensure_ascii=False, indent=2)
 
+# ทดสอบกับรูปจากแหล่งอื่น ทุกการทดลองที่เทรนเสร็จ (ไฟล์ไหนทำแล้วข้าม)
 if EXTERNAL_DIR != "" and os.path.isdir(EXTERNAL_DIR):
-    test_external(os.path.join(MODEL_DIR, "best_detect.pt"))
+    for r in summary:
+        done_file = os.path.join(RESULT_DIR, "external_" + r["name"] + "_summary.txt")
+        best_file = os.path.join(RUN_DIR, r["name"], "weights", "best.pt")
+        if os.path.exists(best_file) and not os.path.exists(done_file):
+            test_external(best_file, r["name"])
 
 # กราฟเปรียบเทียบไว้ใส่รายงาน
 plot_compare(["1_scratch_sgd", "2_pretrained_sgd"], "compare_scratch_vs_pretrained.png", "Scratch vs Pretrained")
@@ -394,6 +417,7 @@ plot_compare(["2_pretrained_sgd", "3_adam", "4_rmsprop"], "compare_optimizers.pn
 plot_compare(["2_pretrained_sgd", "5_cosine_lr"], "compare_lr_fixed_vs_cosine.png", "LR fixed vs Cosine")
 plot_compare(["2_pretrained_sgd", "6_batch32"], "compare_batch16_vs_32.png", "Batch 16 vs 32")
 plot_compare(["2_pretrained_sgd", "7_no_weight_decay"], "compare_weight_decay.png", "Weight decay (L2) vs none")
+plot_compare(["5_cosine_lr", "8_cosine_more_data"], "compare_more_data.png", "Original data vs + Kaggle images")
 all_names = []
 for e in EXPERIMENTS:
     all_names.append(e["name"])

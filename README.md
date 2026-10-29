@@ -103,13 +103,20 @@ baseline = เริ่มจาก yolov8n ที่เทรนกับ COCO 
 - กล้วยและส้มสดยังดี (82–87%) แต่ **ส้มเน่าแทบทายไม่ได้ (5%)** และแอปเปิลได้ราวครึ่งเดียว
 - แปลว่าก่อนใช้งานจริง ต้องเพิ่มรูปเทรนที่หลากหลายกว่านี้ (ดูข้อจำกัดในรายงาน)
 
+**รอบ 2 : เพิ่มรูปจาก Kaggle เข้าชุดเทรน** (กำลังทำ)
+- เอารูป Kaggle 3,000 รูป (แอปเปิล กล้วย ส้ม ชนิดละสด/เน่า 500 รูป) ที่**ไม่ซ้ำกับชุดทดสอบภายนอก** มาเพิ่มในชุดเทรน
+- รูป Kaggle ไม่มีกรอบ เลยให้โมเดลรอบแรกช่วยตีกรอบ แล้วใช้ชื่อโฟลเดอร์ Kaggle เป็นคำตอบ สด/เน่า
+  เก็บเฉพาะกรอบที่โมเดลเห็นเป็นผลไม้ชนิดเดียวกับชื่อโฟลเดอร์ และกรอบต้องกินพื้นที่รูปพอ (สุ่มดูด้วยตาแล้ว กรอบถูกราว 95%)
+- เทียบ `5_cosine_lr` (ข้อมูลเดิม) กับ `8_cosine_more_data` (ข้อมูลเดิม + Kaggle) ใช้ train/val/test ชุดเดียวกัน
+- ผลจะใส่ตรงนี้หลังเทรนเสร็จ
+
 
 ## โครงสร้างไฟล์
 
 ```
 train/
-  prepare_data.py       เตรียมข้อมูล (ชุดเทรน + ชุดทดสอบภายนอก)
-  train_yolo.py         เทรน 7 การทดลอง + วัดผล + กราฟ/ตาราง
+  prepare_data.py       เตรียมข้อมูล (ชุดเทรน + ชุดทดสอบภายนอก + ตีกรอบรูป Kaggle สำหรับรอบ 2)
+  train_yolo.py         เทรน 8 การทดลอง + วัดผล + กราฟ/ตาราง
   train_colab.ipynb     โน้ตบุ๊กสำหรับ Google Colab (ดึงโค้ด 2 ไฟล์บนมารัน)
   datasets/             ที่วางข้อมูล (ไม่ขึ้น GitHub ไฟล์ใหญ่)
 web/
@@ -120,6 +127,9 @@ web/
   static/hero.jpg       รูปหัวเว็บ
   models/               best_detect.pt + class_info.json (ได้จากการเทรน)
   requirements.txt      ไลบรารีของเว็บ (ล็อกเวอร์ชันไว้)
+  Dockerfile            สูตรสร้างเซิร์ฟเวอร์บน Hugging Face Spaces
+  README.md             ค่าตั้งของ Hugging Face Spaces
+results/                กราฟ ตาราง ผลการทดลอง (ใส่รายงาน/สไลด์)
 ```
 
 > ไฟล์ `app.py`, `utils.py`, `style.css`, `models/best_model.keras` ที่อยู่นอกโฟลเดอร์ `web/` เป็น**เว็บรุ่นแรก (Streamlit + MobileNetV2)**
@@ -135,15 +145,19 @@ web/
    - ใส่ Roboflow API key ใน Colab Secrets ชื่อ `ROBOFLOW_API_KEY` (ห้ามพิมพ์ key ลงในโค้ด) หรือ
    - zip โฟลเดอร์ `train/datasets/fruits_quality` ตั้งชื่อ `FruitsQuality.zip` อัปโหลดไว้ใน Google Drive โฟลเดอร์ `KhadSan_detect`
 4. (แนะนำ) zip `train/datasets/external_test` ตั้งชื่อ `ExternalTest.zip` อัปโหลดไว้ที่เดียวกัน
-5. Runtime → **Run all** ผลเก็บใน Drive โฟลเดอร์ `KhadSan_detect` (หลุดกลางทาง กด Run all ใหม่ จะทำต่อจากที่ค้าง)
+5. ตั้ง `ROUND = 1` ในข้อ 4 ของโน้ตบุ๊ก แล้ว Runtime → **Run all** ผลเก็บใน Drive โฟลเดอร์ `KhadSan_detect` (หลุดกลางทาง กด Run all ใหม่ จะทำต่อจากที่ค้าง)
 6. เอา `models/best_detect.pt` กับ `models/class_info.json` มาวางใน `web/models/`
 
-เตรียมชุดทดสอบภายนอกในเครื่องตัวเอง (ต้องมีโฟลเดอร์ Kaggle ที่ `train/datasets/fruit_diseases_kaggle`):
+**รอบ 2 (เพิ่มรูป Kaggle)** ทำในเครื่องตัวเองก่อน (ต้องมีโฟลเดอร์ Kaggle ที่ `train/datasets/fruit_diseases_kaggle` และโมเดลรอบแรกใน `web/models/`)
 
 ```bash
 cd train
-python prepare_data.py
+python prepare_data.py                 # ทำชุดทดสอบภายนอก (datasets/external_test)
+python prepare_data.py --make-boxes    # ตีกรอบรูป Kaggle (datasets/kaggle_boxes) ต้องลง ultralytics
 ```
+
+แล้ว zip `datasets/external_test` เป็น `ExternalTest.zip` กับ `datasets/kaggle_boxes` เป็น `KaggleBoxes.zip`
+อัปโหลดไว้ใน Drive โฟลเดอร์ `KhadSan_detect_v2` ตั้ง `ROUND = 2` ในโน้ตบุ๊ก แล้ว Run all
 
 
 ## วิธีเปิดเว็บในเครื่อง
@@ -177,6 +191,17 @@ python app.py
 - กด **เปิดกล้อง** เพื่อถ่ายจากกล้อง หรือ **เลือกรูปจากเครื่อง** แล้วกด **ตรวจเลย**
 - กล้องเปิดได้เฉพาะเว็บที่เป็น HTTPS หรือ localhost (กฎของเบราว์เซอร์)
 - ถ่ายให้เห็นผลไม้ทั้งลูก แสงพอ ผลไม้ชนิดอื่นนอก 5 ชนิด โมเดลอาจทายผิดได้
+
+
+## ขึ้นเว็บออนไลน์ (Hugging Face Spaces)
+
+1. สมัคร/ล็อกอิน huggingface.co → New Space → ตั้งชื่อ → SDK เลือก **Docker** (Blank) → Hardware แบบฟรี (CPU basic) → Public
+2. ในหน้า Space : Files → Add file → Upload files → ลากไฟล์และโฟลเดอร์**ทั้งหมดที่อยู่ในโฟลเดอร์ `web/`** ใส่ (ไม่ใช่ตัวโฟลเดอร์ web เอง) → Commit
+3. รอ Hugging Face สร้างเซิร์ฟเวอร์ตาม `Dockerfile` (ครั้งแรกราว 5-10 นาที) เสร็จแล้วได้ลิงก์ https ใช้กล้องบนมือถือได้
+4. เปลี่ยนโมเดลทีหลัง : อัปโหลด `models/best_detect.pt` ทับไฟล์เดิม เว็บจะสร้างใหม่ให้เอง
+
+- เซิร์ฟเวอร์ฟรีจะหลับถ้าไม่มีคนใช้สักพัก ก่อนนำเสนอให้เปิดลิงก์ปลุกไว้ล่วงหน้า
+- ทดสอบสูตร `Dockerfile` ในเครื่องแล้ว : เปิดเว็บได้ ตรวจรูปได้ ใช้แรมราว 430 MB
 
 
 ## การป้องกันในเว็บ

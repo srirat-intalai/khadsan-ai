@@ -11,8 +11,15 @@
 #   - คลาสละไม่เกิน 100 รูป ข้ามรูปซ้ำ ย่อรูป เปลี่ยนชื่อคลาสให้ตรงกับโมเดล
 #   - ถ้าไม่มีโฟลเดอร์ Kaggle (เช่นตอนรันบน Colab) ส่วนนี้ข้ามไปเอง
 #
+# ส่วนที่ 3 (เทรนรอบ 2) : เอารูป Kaggle มาเพิ่มเป็นรูปเทรน ให้โมเดลเคยเห็นรูปหลายแบบขึ้น
+#   - รูป Kaggle ไม่มีกรอบ เลยให้โมเดลรอบแรกช่วยหาตำแหน่งผลไม้ (กรอบ) ส่วนคำตอบ สด/เน่า ใช้ชื่อโฟลเดอร์
+#   - เก็บเฉพาะกรอบที่โมเดลเห็นเป็น "ชนิดเดียวกับชื่อโฟลเดอร์" (ถ้าเห็นเป็นชนิดอื่น กรอบมักวางผิดที่ เช่น ไปตีกรอบใบไม้)
+#   - ข้ามรูปที่คล้ายรูปในชุดทดสอบภายนอก (ไม่งั้นข้อสอบรั่ว คะแนนดูดีเกินจริง)
+#   - รันในเครื่องตัวเอง (ต้องมีโมเดลรอบแรกที่ web/models/best_detect.pt):  python prepare_data.py --make-boxes
+#
 # วิธีรัน (ในโฟลเดอร์ train):  python prepare_data.py
 # เปลี่ยนที่อยู่ได้:  python prepare_data.py --src โฟลเดอร์FruitsQuality --out โฟลเดอร์ผลลัพธ์
+# รอบ 2 เพิ่มรูป Kaggle เข้าชุดเทรน:  เติม --extra โฟลเดอร์kaggle_boxes
 
 import os
 import sys
@@ -27,6 +34,8 @@ SRC_DIR = "datasets/fruits_quality"               # ชุดเทรน (Robof
 OUT_DIR = "datasets/data_5fruits"                 # ที่เก็บชุดเทรนที่แบ่งแล้ว
 KAGGLE_DIR = "datasets/fruit_diseases_kaggle"     # ชุดทดสอบภายนอก (Kaggle) ไม่มีก็ได้
 EXTERNAL_DIR = "datasets/external_test"           # ที่เก็บชุดทดสอบภายนอก
+BOX_DIR = "datasets/kaggle_boxes"                 # รูป Kaggle ที่ตีกรอบให้แล้ว (ส่วนที่ 3)
+BOX_MODEL = "../web/models/best_detect.pt"        # โมเดลรอบแรก ใช้หาตำแหน่งผลไม้
 
 # ชื่อคลาสในชุดเดิมของ Roboflow (เรียงตาม data.yaml ของเขา ห้ามสลับ)
 OLD_NAMES = ["Apple_Bad", "Apple_Good", "Banana_Bad", "Banana_Good", "Good_Apple-Bad_Apple",
@@ -50,12 +59,22 @@ SEED = 42
 SAME_PICTURE = 6        # ลายนิ้วมือรูปต่างกันไม่เกิน 6 จุด (จาก 64) = รูปเกือบเหมือนกัน
 EXTERNAL_PER_CLASS = 100
 EXTERNAL_MAX_SIDE = 640
+BOX_PER_CLASS = 500     # ส่วนที่ 3 : เอารูป Kaggle คลาสละกี่รูป
+BOX_CONF = 0.3          # ส่วนที่ 3 : กรอบที่โมเดลมั่นใจตั้งแต่นี้ขึ้นไปถึงเอามาใช้
+BOX_COVER = 0.3         # ส่วนที่ 3 : กรอบทุกอันรวมกันต้องกินพื้นที่รูปอย่างน้อย 30%
+
+EXTRA_DIR = ""          # รอบ 2 : โฟลเดอร์ kaggle_boxes ที่จะเพิ่มเข้าชุดเทรน (ไม่ใส่ = ไม่เพิ่ม)
+MAKE_BOXES = False
 
 for i in range(len(sys.argv)):
     if sys.argv[i] == "--src":
         SRC_DIR = sys.argv[i + 1]
     if sys.argv[i] == "--out":
         OUT_DIR = sys.argv[i + 1]
+    if sys.argv[i] == "--extra":
+        EXTRA_DIR = sys.argv[i + 1]
+    if sys.argv[i] == "--make-boxes":
+        MAKE_BOXES = True
 
 
 # ===== ใช้ร่วมกันทั้ง 2 ส่วน =====
@@ -210,6 +229,19 @@ def write_dataset(splits):
         f.write("nc: " + str(len(NEW_NAMES)) + "\n")
         f.write("names: [" + names_text + "]\n")
 
+    # รอบ 2 : อีกไฟล์ data_more.yaml = ชุดเทรนเดิม + รูป Kaggle (val กับ test ใช้ชุดเดิม จะได้เทียบกันได้ยุติธรรม)
+    # YOLO รับ train เป็น list ได้ หาไฟล์ป้ายเองจากโฟลเดอร์ labels ข้างๆ images
+    if EXTRA_DIR != "":
+        extra_count = len(os.listdir(os.path.join(EXTRA_DIR, "images")))
+        with open(os.path.join(OUT_DIR, "data_more.yaml"), "w", encoding="utf-8") as f:
+            f.write("path: " + os.path.abspath(OUT_DIR) + "\n")
+            f.write("train: [train/images, " + os.path.abspath(os.path.join(EXTRA_DIR, "images")) + "]\n")
+            f.write("val: val/images\ntest: test/images\n")
+            f.write("nc: " + str(len(NEW_NAMES)) + "\n")
+            f.write("names: [" + names_text + "]\n")
+        rows.append(["extra_kaggle", extra_count] + [""] * len(NEW_NAMES))
+        print("รอบ 2 : เพิ่มรูป Kaggle เข้าชุดเทรน", extra_count, "รูป -> data_more.yaml")
+
     with open(os.path.join(OUT_DIR, "dataset_counts.csv"), "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["split", "images"] + NEW_NAMES)
@@ -268,7 +300,108 @@ def make_external_test():
         print(new_name, "เซฟ", saved, "รูป | ข้ามรูปซ้ำ/รูปเสีย", skipped)
 
 
+# =====================================================================
+# ส่วนที่ 3 : ตีกรอบรูป Kaggle ให้อัตโนมัติ (ใช้เทรนรอบ 2)
+# =====================================================================
+def make_kaggle_boxes():
+    from ultralytics import YOLO    # import ตรงนี้ ส่วนอื่นจะได้ไม่ต้องลง ultralytics
+    model = YOLO(BOX_MODEL)
+
+    # ลายนิ้วมือของรูปในชุดทดสอบภายนอก ไว้กันไม่ให้รูปคล้ายๆ กันหลุดเข้าชุดเทรน
+    test_prints = []
+    for c in os.listdir(EXTERNAL_DIR):
+        folder = os.path.join(EXTERNAL_DIR, c)
+        if not os.path.isdir(folder):
+            continue
+        for f in os.listdir(folder):
+            with Image.open(os.path.join(folder, f)) as im:
+                test_prints.append(picture_print(im))
+    print("ลายนิ้วมือชุดทดสอบภายนอก", len(test_prints), "รูป")
+
+    if os.path.exists(BOX_DIR):
+        shutil.rmtree(BOX_DIR)
+    os.makedirs(os.path.join(BOX_DIR, "images"))
+    os.makedirs(os.path.join(BOX_DIR, "labels"))
+
+    rng = random.Random(SEED + 1)    # สุ่มคนละแบบกับส่วนที่ 2
+    for old_name in sorted(KAGGLE_NAMES):
+        new_name = KAGGLE_NAMES[old_name]
+        class_id = NEW_NAMES.index(new_name)
+        src_folder = os.path.join(KAGGLE_DIR, old_name)
+        files = []
+        for f in sorted(os.listdir(src_folder)):
+            if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+                files.append(f)
+        rng.shuffle(files)
+
+        chosen = []
+        saved = 0
+        same_as_test = 0
+        repeat = 0
+        no_box = 0
+        for f in files:
+            if saved >= BOX_PER_CLASS:
+                break
+            try:
+                with Image.open(os.path.join(src_folder, f)) as im:
+                    img = to_rgb(im)
+            except Exception:
+                continue
+
+            # ห้ามคล้ายรูปในชุดทดสอบภายนอก
+            p = picture_print(img)
+            bad = False
+            for q in test_prints:
+                if count_diff(p, q) <= SAME_PICTURE:
+                    bad = True
+                    break
+            if bad:
+                same_as_test = same_as_test + 1
+                continue
+            # ห้ามคล้ายรูปที่เลือกไปแล้ว (ชุดนี้มีรูปหมุน/ใส่จุดซ้ำเยอะ)
+            for q in chosen:
+                if count_diff(p, q) <= SAME_PICTURE:
+                    bad = True
+                    break
+            if bad:
+                repeat = repeat + 1
+                continue
+
+            img.thumbnail((EXTERNAL_MAX_SIDE, EXTERNAL_MAX_SIDE))
+            # ให้โมเดลรอบแรกหาตำแหน่งผลไม้ (สด/เน่าไม่สนที่มันทาย ใช้ชื่อโฟลเดอร์แทน)
+            r = model.predict(img, imgsz=640, conf=BOX_CONF, iou=0.5, agnostic_nms=True, verbose=False)[0]
+            lines = []
+            cover = 0.0
+            for i in range(len(r.boxes)):
+                seen_fruit = r.names[int(r.boxes.cls[i])].split("_")[0]
+                if seen_fruit != new_name.split("_")[0]:
+                    continue     # โมเดลเห็นเป็นผลไม้ชนิดอื่น กรอบนี้น่าจะผิดที่ ไม่เอา
+                x, y, w, h = r.boxes.xywhn[i]
+                # กรอบเล็กกว่า 3% ของรูป น่าจะไม่ใช่ผลไม้หลัก (เช่น ใบไม้ จุดบนผิว) ไม่เอา
+                if float(w) * float(h) < 0.03:
+                    continue
+                cover = cover + float(w) * float(h)
+                lines.append(str(class_id) + " " + str(round(float(x), 6)) + " " + str(round(float(y), 6)) + " " + str(round(float(w), 6)) + " " + str(round(float(h), 6)))
+            # ไม่เจอกรอบ หรือกรอบรวมกันเล็กไป (รูปมีหลายลูกแต่ตีกรอบได้แค่บางลูก ลูกที่เหลือจะสอนผิดว่าไม่ใช่ผลไม้) ไม่เอา
+            if len(lines) == 0 or cover < BOX_COVER:
+                no_box = no_box + 1
+                continue
+
+            chosen.append(p)
+            name = "kaggle_" + new_name + "_" + str(saved + 1).zfill(4)
+            img.save(os.path.join(BOX_DIR, "images", name + ".jpg"), quality=90)
+            with open(os.path.join(BOX_DIR, "labels", name + ".txt"), "w", encoding="utf-8") as out:
+                out.write("\n".join(lines) + "\n")
+            saved = saved + 1
+        print(new_name, "เซฟ", saved, "| ข้าม: คล้ายชุดทดสอบ", same_as_test, "รูปซ้ำ", repeat, "หากรอบไม่เจอ", no_box)
+
+
 # ===== เริ่มทำงาน =====
+if MAKE_BOXES:
+    make_kaggle_boxes()
+    print("เสร็จส่วนที่ 3 รูป Kaggle ที่ตีกรอบแล้วอยู่ที่", os.path.abspath(BOX_DIR))
+    sys.exit()
+
 items = read_all_images()
 print("เหลือรูปทั้งหมด", len(items), "รูป")
 groups = make_groups(items)
