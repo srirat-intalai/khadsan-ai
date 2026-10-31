@@ -9,7 +9,7 @@
 # แล้ววัดผลบน test set (Precision, Recall, F1, mAP50, Confusion Matrix)
 #
 # ผลที่ได้:
-#   models/best_detect.pt, models/best_detect.onnx, models/class_info.json  -> เอาไปใช้ในเว็บ
+#   models/best_detect.pt, models/class_info.json  -> เอาไปใช้ในเว็บ (วางใน web/models/)
 #   results/  -> กราฟ ตาราง ไว้ใส่รายงานกับสไลด์
 #
 # วิธีรัน:  python train_yolo.py --data datasets/data_5fruits/data.yaml --out โฟลเดอร์เก็บผล
@@ -393,9 +393,7 @@ for exp in EXPERIMENTS:
         best_name = row["name"]
         save_best(row, best_path, test_m)
 
-# แปลงโมเดลที่ดีที่สุดเป็น ONNX ให้เว็บใช้ (เบากว่า ไม่ต้องลง PyTorch บนเซิร์ฟเวอร์)
-# YOLO จะเซฟ best_detect.onnx ไว้ข้างๆ best_detect.pt ในโฟลเดอร์ models ให้เอง
-YOLO(os.path.join(MODEL_DIR, "best_detect.pt")).export(format="onnx", imgsz=IMG_SIZE)
+# จดว่าโมเดลที่เลือกมาจากการทดลองไหน คลาสอะไรบ้าง (เว็บอ่านไฟล์นี้คู่กับ best_detect.pt)
 info = {
     "class_names": CLASS_NAMES,
     "img_size": IMG_SIZE,

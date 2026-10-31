@@ -42,7 +42,7 @@ COLOR_UNSURE = (94, 84, 75)     # หมึกจาง = ไม่แน่ใ�
 COLOR_PAPER = (253, 251, 249)   # สีครีม ใช้ทำขอบรอบกรอบ กับสีตัวเลข
 
 
-# ===== ไอคอน วาดเองเป็น svg แล้วแปลงเป็น <img> (แบบเดียวกับเว็บเดิม) =====
+# ===== ไอคอน วาดเองเป็น svg แล้วแปลงเป็น <img> =====
 def svg_img(svg):
     text = base64.b64encode(svg.encode("utf-8")).decode()
     return '<img src="data:image/svg+xml;base64,' + text + '" alt="">'
@@ -74,7 +74,7 @@ app.jinja_env.globals["model_ready"] = os.path.exists(MODEL_FILE)   # ใส่�
 
 
 # ===== จัดการรูป =====
-# แก้รูปให้พร้อมใช้ (เหมือน fix_image ในเว็บเดิม)
+# แก้รูปให้พร้อมใช้ : หมุนตามข้อมูลกล้อง แล้วแปลงเป็น RGB
 def fix_image(img):
     img = ImageOps.exif_transpose(img)   # รูปจากมือถือบางทีหมุนเอง หมุนกลับให้ตรง
     # png พื้นหลังโปร่งใส ถ้าแปลงตรงๆ พื้นจะดำ เลยวางบนพื้นขาวก่อน
