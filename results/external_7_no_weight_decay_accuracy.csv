@@ -1,7 +1,0 @@
-class,images,correct,accuracy
-Apple_Bad,100,15,0.15
-Apple_Good,100,50,0.5
-Banana_Bad,100,83,0.83
-Banana_Good,100,85,0.85
-Orange_Bad,100,0,0.0
-Orange_Good,100,91,0.91

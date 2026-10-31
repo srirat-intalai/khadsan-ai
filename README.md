@@ -113,7 +113,7 @@
 **ไฟล์ผลการทดลองอยู่ใน `results/`** หยิบไปใส่รายงานกับสไลด์ได้เลย
 - `summary.md` กับ `summary.csv` ตารางรวมทุกการทดลอง มีทั้งค่าที่ตั้งและคะแนน
 - `per_class_best.csv` คะแนนรายคลาสของตัวที่ดีที่สุด
-- `external_<การทดลอง>_*.csv` / `_summary.txt` ผลทดสอบกับรูปจากแหล่งอื่น ทั้งรายคลาสและ confusion
+- `external_5_cosine_lr_accuracy.csv` กับ `external_5_cosine_lr_confusion.csv` ผลทดสอบกับรูปจากแหล่งอื่นรายคลาสของตัวที่ใช้ในเว็บ (ของตัวอื่นดูได้จากคอลัมน์ "รูปแหล่งอื่น" ในตารางข้างบน)
 - `confusion_matrix_best.png` กับ `confusion_matrix_normalized_best.png` Confusion Matrix แบบนับจำนวนและแบบสัดส่วน
 - `compare_*.png` กราฟเทียบแต่ละเรื่อง เช่น optimizer, learning rate, batch, weight decay, scratch vs pretrained และ `compare_all.png` ที่รวมทุกตัว
 - `curves_*.png` กราฟ Loss และคะแนนทีละ epoch ของแต่ละการทดลอง
@@ -161,7 +161,7 @@ results/                กราฟ ตาราง ผลการทดลอ
 
 ถ้า Colab ขึ้นว่าใช้ GPU ไม่ได้เพราะเกินขีดจำกัด แปลว่าโควตา GPU ฟรีของบัญชีนั้นหมดแล้ว ให้รอสักวันแล้วค่อยลองใหม่ หรือเปลี่ยนไปเทรนด้วยบัญชี Google อื่น (ต้องอัปโหลดไฟล์ zip ไว้ใน Drive ของบัญชีนั้นด้วย)
 
-ถ้าจะสร้างไฟล์ zip เองในเครื่อง ต้องมีโฟลเดอร์ Kaggle อยู่ที่ `train/datasets/fruit_diseases_kaggle`, COCO128 อยู่ที่ `train/datasets/coco128` และโมเดลรอบแรกอยู่ใน `web/models/`
+ถ้าจะสร้างไฟล์ zip เองในเครื่อง ต้องโหลดรูป Kaggle (ลิงก์อยู่ในหัวข้อเครดิต) มาไว้ที่ `train/datasets/fruit_diseases_kaggle`, COCO128 อยู่ที่ `train/datasets/coco128` และโมเดลรอบแรกอยู่ใน `web/models/`
 
 ```bash
 cd train
