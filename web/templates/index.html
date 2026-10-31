@@ -38,7 +38,7 @@
 {% endmacro %}
 
 {# ===== 1 ข้อในเช็กลิสต์ขั้นตอน
-   state = done เสร็จ / unsure มีที่ต้องดูซ้ำ / none ไม่เจอผลไม้ / skip ไม่ได้ทำ / error รูปใช้ไม่ได้ / "" ยังไม่เริ่ม
+   state = done เสร็จ / bad มีลูกเน่า / unsure มีที่ต้องตรวจซ้ำ / check มีลูกสดที่ควรดูอีกที / none ไม่พบผลไม้ / skip ไม่ได้ทำ / error รูปใช้ไม่ได้ / "" ยังไม่เริ่ม
    wait = ข้อความตอนขั้นนี้กำลังทำ (มีวงหมุน) ===== #}
 {% macro step(num, title, sub, state, wait) %}
 <div class="step{% if state %} step-{{ state }}{% endif %}">
@@ -52,9 +52,10 @@
             <span class="tick-ok">{{ icons.tick|safe }}</span><span class="tick-x">{{ icons.cross|safe }}</span>
         </span><span class="mark-text">
             {%- if state == "done" %}เสร็จแล้ว{% endif -%}
-            {%- if state == "unsure" %}มีที่ต้องตรวจซ้ำ{% endif -%}
-            {%- if state == "check" %}มีที่ควรดูอีกที{% endif -%}
-            {%- if state == "none" %}ไม่เจอผลไม้{% endif -%}
+            {%- if state == "bad" %}ต้องคัดออก{% endif -%}
+            {%- if state == "unsure" %}ต้องตรวจซ้ำ{% endif -%}
+            {%- if state == "check" %}ควรดูอีกที{% endif -%}
+            {%- if state == "none" %}ไม่พบผลไม้{% endif -%}
             {%- if state == "skip" %}ไม่ได้ตรวจ{% endif -%}
             {%- if state == "error" %}ใช้รูปนี้ไม่ได้{% endif -%}
         </span></div>
@@ -143,7 +144,8 @@
         {% set s2 = "none" %}{% set s3 = "skip" %}
     {% else %}
         {% set s2 = "done" %}
-        {% if summary.unsure > 0 %}{% set s3 = "unsure" %}{% elif summary.check_nums %}{% set s3 = "check" %}{% else %}{% set s3 = "done" %}{% endif %}
+        {# ขั้นที่ 3 บอกเรื่องที่สำคัญที่สุดก่อน : เน่า -> ตรวจซ้ำ -> ควรดูอีกที -> เสร็จ (ให้ตรงกับตราปั๊ม) #}
+        {% if summary.bad > 0 %}{% set s3 = "bad" %}{% elif summary.unsure > 0 %}{% set s3 = "unsure" %}{% elif summary.check_nums %}{% set s3 = "check" %}{% else %}{% set s3 = "done" %}{% endif %}
     {% endif %}
 {% elif error %}
     {% set s1 = "error" %}
@@ -162,6 +164,8 @@
 
 
 {% if summary %}
+{# all_check = ลูกสดทุกลูกในรูปเป็น "ควรดูอีกที" : บอกครั้งเดียว ไม่ต้องไล่เลขทุกลูก ไม่ต้องเขียนซ้ำทุกแถว #}
+{% set all_check = summary.good > 0 and summary.check_nums|length == summary.good %}
 {# ================= มีผลตรวจแล้ว : ผลขึ้นก่อน =================
    คอม  : ซ้าย = ป้ายตรวจ + รายการทีละลูก + AI ตัดสินจากอะไร / ขวา = รูปตีกรอบ + สแกนรูปต่อไป + ข้อมูลสำหรับอาจารย์
    มือถือ: ป้ายตรวจ -> รูปตีกรอบ -> รายการ -> AI ตัดสินจากอะไร -> สแกนรูปต่อไป -> ข้อมูลสำหรับอาจารย์ (จัดลำดับใน style.css) #}
@@ -181,6 +185,8 @@
                     <div class="stamp stamp-rotten">คัดออก {{ summary.bad }} ลูก</div>
                     {% elif summary.unsure > 0 %}
                     <div class="stamp stamp-unsure">ตรวจซ้ำ {{ summary.unsure }} ลูก</div>
+                    {% elif all_check %}
+                    <div class="stamp stamp-check">สด {{ summary.good }} ลูก</div>
                     {% elif summary.check_nums %}
                     <div class="stamp stamp-check">ควรดูอีกที {{ summary.check_nums|length }} ลูก</div>
                     {% else %}
@@ -188,18 +194,20 @@
                     {% endif %}
                     <div class="tag-title">ป้ายตรวจคุณภาพ</div>
                     {% if summary.total == 0 %}
-                    <div class="tag-row"><span class="tag-key">ผล</span><span class="tag-line">ไม่เจอผลไม้ 5 ชนิดที่รู้จัก</span></div>
+                    <div class="tag-row"><span class="tag-key">ผล</span><span class="tag-line">ไม่พบผลไม้ 5 ชนิดที่รู้จัก</span></div>
                     {% else %}
                     <div class="tag-row"><span class="tag-key">พบทั้งหมด</span><span class="tag-line">{{ summary.total }} ลูก</span></div>
                     <div class="tag-row"><span class="tag-key">คัดออก</span>{% if summary.bad_nums %}<span class="tag-line tag-bad">{{ summary.bad_nums|join(", ") }}</span>{% else %}<span class="tag-line">–</span>{% endif %}</div>
                     <div class="tag-row"><span class="tag-key">ตรวจซ้ำ</span><span class="tag-line">{% if summary.unsure_nums %}{{ summary.unsure_nums|join(", ") }}{% else %}–{% endif %}</span></div>
-                    <div class="tag-row"><span class="tag-key">สด</span><span class="tag-line">{{ summary.good }} ลูก{% if summary.check_nums %} · <span class="nowrap">ควรดูอีกที</span> {{ summary.check_nums|join(", ") }}{% endif %}</span></div>
+                    <div class="tag-row"><span class="tag-key">สด</span><span class="tag-line">{{ summary.good }} ลูก{% if all_check %} · <span class="nowrap">ควรดูอีกทีทุกลูก</span>{% elif summary.check_nums %} · <span class="nowrap">ควรดูอีกที</span> {{ summary.check_nums|join(", ") }}{% endif %}</span></div>
                     {% endif %}
                     <div class="tag-foot">ตรวจโดย KhadSan AI</div>
                 </div>
             </div></div>
             {% if summary.total == 0 %}
             <div class="tag-warn">ลองถ่ายใหม่ให้เห็นผลไม้ทั้งลูก แสงพอ ดูวิธีใน "AI ตัดสินจากอะไร"</div>
+            {% elif all_check %}
+            <div class="tag-warn">ลูกสดทุกลูก AI มั่นใจไม่ถึง {{ high_conf }}% ควรหยิบดูด้วยตาอีกที</div>
             {% endif %}
             {# โปรแกรมอ่านหน้าจอจะอ่านสรุปนี้ก่อนรายการ #}
             <div class="sr-only" id="summary-text">ผลตรวจ: พบผลไม้ {{ summary.total }} ลูก คัดออก {{ summary.bad }} ลูก ตรวจซ้ำ {{ summary.unsure }} ลูก สด {{ summary.good }} ลูก{% if summary.check_nums %} ในนี้ควรดูอีกที {{ summary.check_nums|length }} ลูก{% endif %}</div>
@@ -221,7 +229,9 @@
                         <div class="fruit-name">{{ f.thai }}</div>
                         <div class="fruit-state">
                             {# สดแต่มั่นใจไม่ถึงระดับสูง ให้คนดูอีกที (ลูกสดที่ทายผิดคือลูกที่หลุดไปถึงลูกค้า) #}
-                            {% if f.check %}<span class="fruit-state-good">สด (ควรดูอีกที)</span>
+                            {# ถ้าทุกลูกเป็นแบบนี้ ป้ายตรวจบอกไว้แล้ว ไม่ต้องเขียนซ้ำทุกแถว #}
+                            {% if f.check and all_check %}<span class="fruit-state-good">สด</span>
+                            {% elif f.check %}<span class="fruit-state-good">สด</span> <span class="flag-check">ควรดูอีกที</span>
                             {% elif f.state == "good" %}<span class="fruit-state-good">สด</span>
                             {% elif f.state == "bad" %}<span class="fruit-state-bad">เน่า · คัดออก</span>
                             {% else %}<span class="fruit-state-unsure">ตรวจซ้ำ</span>{% endif %}
@@ -246,7 +256,7 @@
                 <li><b>เรียนจากรูปจริง</b> โมเดล YOLOv8 ฝึกจากรูปผลไม้ราว 1,600 รูป ที่คนติดป้ายไว้แล้วว่าลูกไหนสด ลูกไหนเน่า</li>
                 <li><b>บอกชนิด</b> ดูรูปทรงและสีของแต่ละลูก</li>
                 <li><b>บอกสด/เน่า</b> ดูผิว ในรูปเน่าที่ใช้สอน AI มักมีจุดคล้ำ รอยช้ำ รา ผิวเหี่ยว หรือสีเปลี่ยน</li>
-                <li><b>% ความมั่นใจ</b> ยิ่งสูง AI ยิ่งแน่ใจ · {{ high_conf }}% ขึ้นไป = มั่นใจสูง · ลูกที่ว่าสดแต่ต่ำกว่า {{ high_conf }}% = ควรดูอีกที (กันลูกเน่าหลุดไปถึงลูกค้า) · ต่ำกว่า {{ low_conf }}% = ตรวจซ้ำ AI ยังบอกไม่ได้ ให้คนตัดสิน</li>
+                <li><b>% ความมั่นใจ</b> ยิ่งสูง AI ยิ่งแน่ใจ · ต่ำกว่า {{ low_conf }}% = ตรวจซ้ำ AI ยังบอกไม่ได้ ให้คนตัดสิน · ลูกที่ว่าสดแต่ได้ {{ low_conf }}–{{ high_conf - 1 }}% = ควรดูอีกที กันลูกเน่าหลุดไปถึงลูกค้า (ถ้าเป็นทุกลูกในรูป เว็บจะบอกครั้งเดียวบนป้ายตรวจ) · {{ high_conf }}% ขึ้นไป = มั่นใจสูง</li>
                 <li><b>ข้อจำกัด</b> AI เห็นแค่รูป ไม่ได้ดมกลิ่นหรือกดดูความนิ่ม ผลไม้นอก 5 ชนิด รูปเบลอ หรือแสงน้อย อาจทายผิดได้</li>
             </ul>
             {% if summary.total == 0 %}
@@ -269,9 +279,11 @@
             {% elif summary.bad > 0 %}
             <div class="status status-bad">ตรวจเสร็จ · มีลูกที่ต้องคัดออก</div>
             {% elif summary.unsure > 0 %}
-            <div class="status status-unsure">ตรวจเสร็จ · มีลูกที่ต้องดูซ้ำ</div>
+            <div class="status status-unsure">ตรวจเสร็จ · มีลูกที่ต้องตรวจซ้ำ</div>
+            {% elif all_check %}
+            <div class="status status-check">ตรวจเสร็จ · สดทั้งหมด แต่ควรดูอีกทีทุกลูก</div>
             {% elif summary.check_nums %}
-            <div class="status status-unsure">ตรวจเสร็จ · สดทั้งหมด แต่มีลูกที่ควรดูอีกที</div>
+            <div class="status status-check">ตรวจเสร็จ · สดทั้งหมด แต่มีลูกที่ควรดูอีกที</div>
             {% else %}
             <div class="status">{{ icons.check|safe }} ตรวจเสร็จ · สดทั้งหมด</div>
             {% endif %}

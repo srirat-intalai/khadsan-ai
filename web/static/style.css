@@ -156,6 +156,9 @@ h1, h2, h3 {font-family: 'Mitr', sans-serif;}
 /* มีลูกสดที่ควรดูอีกที : ช่องเส้นประสีเขียว (เบากว่า ตรวจซ้ำ) */
 .step-check .step-num, .step-check .mark {color: var(--olive);}
 .step-check .tick-box {border-style: dashed; border-color: var(--olive);}
+/* มีลูกเน่า : ขั้นที่ 3 เป็นสีอิฐ ตรงกับตราปั๊ม "คัดออก" */
+.step-bad .step-num, .step-bad .mark {color: var(--rotten);}
+.step-bad .tick-box {border-color: var(--rotten);}
 
 /* ข้อความ "กำลังทำ…" + วงหมุน แทนช่องติ๊ก ตอนขั้นนั้นกำลังทำงาน (scan.js ใส่ class now) */
 .mark-wait {display: none; align-items: center; gap: 10px; margin-top: 10px; min-height: 28px; font-family: 'Mali', cursive; font-size: 17px; font-weight: 500; color: var(--olive);}
@@ -279,7 +282,7 @@ button.pill.cam-open {background: var(--paper);}
 /* จอคอม หน้าเริ่มต้น : scan.js ย้ายภาพกล้องไปไว้ในกรอบสแกนใหญ่ด้านขวา */
 .has-cam .frame-msg, .has-cam .frame-photo {display: none;}
 /* มือถือ : กล้องอยู่ด้านบน กรอบนี้ไม่ต้องบอก "ใส่รูปผลไม้ก่อนนะ" */
-.frame.cam-up {display: none;}
+.card.cam-up {display: none;}
 .has-cam .corner {border-color: var(--paper);}
 .frame .cam-stage {position: absolute; left: 0; top: 0; width: 100%; height: 100%; border: none; border-radius: 0;}
 .frame .cam-video {height: 100%; max-height: none;}
@@ -349,6 +352,8 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 .status {margin-top: 14px; display: flex; align-items: center; gap: 10px; background: var(--olive-soft); color: var(--olive); border-radius: 10px; padding: 10px 14px; font-size: 15px; font-weight: 500;}
 .status-bad {background: var(--dew); color: var(--rotten);}      /* มีลูกเน่า ไม่ใช่สีเขียว */
 .status-unsure {background: var(--dew); color: var(--muted);}
+/* สดทั้งหมดแต่ควรดูอีกที : เขียวเส้นประ แบบเดียวกับตราปั๊ม (ไม่ใช่สีเทาแบบ ตรวจซ้ำ) */
+.status-check {background: var(--paper); border: 1.5px dashed var(--olive);}
 
 
 /* ===== ผลตรวจ (ป้ายตรวจคุณภาพเอียงนิดๆ) ===== */
@@ -492,6 +497,8 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 .fruit-state-good {color: var(--olive); font-weight: 600;}
 .fruit-state-bad {color: var(--rotten); font-weight: 600;}
 .fruit-state-unsure {color: var(--muted); font-weight: 600;}
+/* ป้ายเล็ก "ควรดูอีกที" ในรายการ : ขอบเขียวเส้นประ (แยกจาก "สด" ธรรมดาได้โดยไม่ต้องดูสี) */
+.flag-check {display: inline-block; margin-left: 4px; padding: 0 8px; border: 1.5px dashed var(--olive); border-radius: 999px; color: var(--olive); font-size: 13px; font-weight: 500; line-height: 1.5; white-space: nowrap;}
 /* รูปผลตรวจ : กรอบสูงตามรูปจริง ไม่มีขอบว่าง (รูปแนวตั้งสูงไม่เกิน 560px จะได้ไม่ยาวเกินจอ) */
 .frame.has-result {height: auto;}
 .frame.has-result .frame-photo {height: auto; max-height: 560px;}
@@ -503,4 +510,4 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 /* หัวข้อ: แบ่งบรรทัดให้ยาวพอๆ กัน ไม่เหลือคำเดียวโดดๆ (เบราว์เซอร์เก่าที่ไม่รู้จักจะตัดแบบเดิม) */
 .section-title, .card-title, .tag-title, .step-title, .section-sub .caption {text-wrap: balance;}
 /* ข้อความรอง: ไม่ให้บรรทัดสุดท้ายเหลือคำเดียว */
-.card-sub, .known, .chip-note, .tag-others, .tag-warn, .frame-msg {text-wrap: pretty;}
+.card-sub, .known, .chip-note, .tag-others, .tag-warn, .frame-msg, .why-list li {text-wrap: pretty;}

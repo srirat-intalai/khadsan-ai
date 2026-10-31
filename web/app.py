@@ -290,7 +290,7 @@ def add_details(img, fruits):
                 lean = "สด"
             else:
                 lean = "เน่า"
-            f["reason"] = "AI เอนไปทาง" + lean + " แต่มั่นใจไม่ถึง " + str(LOW_CONF) + "% เลยให้คนดูซ้ำ"
+            f["reason"] = "AI เอนไปทาง" + lean + " แต่มั่นใจไม่ถึง " + str(LOW_CONF) + "% เลยให้คนตรวจซ้ำ"
 
         # สิ่งที่อาจทำให้ AI มั่นใจน้อยลง (บอกเฉพาะลูกที่ยังไม่มั่นใจสูง)
         notes = []
@@ -308,7 +308,7 @@ def add_details(img, fruits):
         f["notes"] = notes
 
 
-# นับว่า สด / เน่า / ตรวจซ้ำ อย่างละกี่ลูก + จดเลขลูกที่ต้องคัดออก / ต้องดูซ้ำ / สดแต่ควรดูอีกที
+# นับว่า สด / เน่า / ตรวจซ้ำ อย่างละกี่ลูก + จดเลขลูกที่ต้องคัดออก / ต้องตรวจซ้ำ / สดแต่ควรดูอีกที
 def count_states(fruits):
     summary = {"total": len(fruits), "good": 0, "bad": 0, "unsure": 0,
                "bad_nums": [], "unsure_nums": [], "check_nums": []}

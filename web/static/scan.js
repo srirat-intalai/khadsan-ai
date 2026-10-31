@@ -216,8 +216,8 @@ function camToFrame() {
         stage.classList.add("has-cam");
         stageSub.textContent = "ภาพจากกล้อง · กดถ่าย หรือสแกนสด ทางซ้าย";
     } else {
-        stage.classList.add("cam-up");
-        stageSub.textContent = "กล้องเปิดอยู่ด้านบน · กดถ่าย หรือสแกนสด";
+        // มือถือ : ภาพกล้องอยู่ด้านบนแล้ว ซ่อนการ์ดกรอบสแกนทั้งใบ ไม่ต้องเลื่อนผ่านการ์ดว่าง
+        stage.parentNode.classList.add("cam-up");
     }
     camMoved = true;
 }
@@ -229,7 +229,8 @@ function camBack() {
     if (stage.classList.contains("has-cam")) {
         cam.insertBefore(camStage, cam.firstChild);
     }
-    stage.classList.remove("has-cam", "cam-up");
+    stage.classList.remove("has-cam");
+    stage.parentNode.classList.remove("cam-up");
     stageSub.textContent = stageSubText;
     camMoved = false;
 }
@@ -522,11 +523,22 @@ function showLiveInfo(result) {
     } else if (result.total == 0) {
         text = "ยังไม่เห็นผลไม้ เล็งให้เห็นทั้งลูก แสงพอ";
     } else {
-        text = "เห็น " + result.total + " ลูก · สด " + result.good;
-        if (result.check > 0) {
-            text = text + " (ควรดูอีกที " + result.check + ")";
+        // บอกเฉพาะอันที่มี (ไม่ต้องอ่าน "เน่า 0" ทุกครั้ง)
+        text = "เห็น " + result.total + " ลูก";
+        if (result.good > 0) {
+            text = text + " · สด " + result.good;
+            if (result.check > 0 && result.check == result.good) {
+                text = text + " (ควรดูอีกทีทุกลูก)";
+            } else if (result.check > 0) {
+                text = text + " (ควรดูอีกที " + result.check + ")";
+            }
         }
-        text = text + " · เน่า " + result.bad + " · ตรวจซ้ำ " + result.unsure;
+        if (result.bad > 0) {
+            text = text + " · เน่า " + result.bad;
+        }
+        if (result.unsure > 0) {
+            text = text + " · ตรวจซ้ำ " + result.unsure;
+        }
     }
     if (liveInfo.textContent != text) {
         liveInfo.textContent = text;
