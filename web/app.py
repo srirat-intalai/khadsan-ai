@@ -7,7 +7,7 @@ import os
 import io
 import json
 import base64
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for
 from PIL import Image, ImageOps, ImageDraw, ImageFont, ImageStat
 
 
@@ -35,7 +35,7 @@ if os.path.exists(CLASS_FILE):
     with open(CLASS_FILE, encoding="utf-8") as f:
         IMG_SIZE = json.load(f).get("img_size", 640)
 
-# สีกรอบในรูป (สีเดียวกับเว็บ)
+# สีกรอบในรูป ต้องตรงกับ --olive / --rotten / --muted / --paper ใน static/style.css (เปลี่ยนสีที่นั่น ต้องมาแก้ตรงนี้ด้วย)
 COLOR_GOOD = (79, 104, 21)      # เขียวมะกอก = สด
 COLOR_BAD = (166, 58, 18)       # สีอิฐ = เน่า
 COLOR_UNSURE = (94, 84, 75)     # หมึกจาง = ไม่แน่ใจ
@@ -347,7 +347,7 @@ def scan():
     if file is None or file.filename == "":
         return render_template("index.html", error="ยังไม่ได้เลือกรูป เลือกรูปก่อนแล้วค่อยกดตรวจนะ")
     if not os.path.exists(MODEL_FILE):
-        return render_template("index.html", error="ยังไม่มีไฟล์โมเดล (models/best_detect.pt) ทีมกำลังเทรนอยู่")
+        return render_template("index.html", error="ยังไม่มีไฟล์โมเดล ให้วาง best_detect.pt ไว้ใน web/models/ แล้วเปิดเว็บใหม่")
 
     # เปิดรูป + เช็กไฟล์ (ถ้าไฟล์เสียหรือไม่ใช่รูปจริงจะเข้า except)
     try:
@@ -358,7 +358,7 @@ def scan():
         img.load()
         img = fix_image(img)
     except Exception:
-        return render_template("index.html", error="เปิดรูปนี้ไม่ได้ ไฟล์อาจเสียหรือไม่ใช่ jpg / png จริง ลองรูปอื่นดูนะ")
+        return render_template("index.html", error="เปิดรูปนี้ไม่ได้ ไฟล์อาจเสียหรือไม่ใช่ jpg / png / webp จริง ลองรูปอื่นดูนะ")
 
     # ให้โมเดลตรวจ (ถ้าพัง ไม่โชว์ error ดิบให้ผู้ใช้เห็น)
     try:
@@ -416,6 +416,19 @@ def live():
 @app.errorhandler(413)
 def too_large(e):
     return render_template("index.html", error="ไฟล์ใหญ่เกิน " + str(MAX_MB) + " MB ลองใช้รูปที่เล็กลง"), 413
+
+
+# พิมพ์ลิงก์ผิด หรือเปิดหน้าที่ไม่มี : ไม่โชว์หน้า Not Found ภาษาอังกฤษ พากลับหน้าหลักเลย
+@app.errorhandler(404)
+@app.errorhandler(405)
+def not_found(e):
+    return redirect(url_for("home"))
+
+
+# โค้ดพังแบบไม่คาดคิด : บอกเป็นภาษาไทย ไม่โชว์ error ดิบ
+@app.errorhandler(500)
+def server_error(e):
+    return render_template("index.html", error="เว็บมีปัญหาชั่วคราว ลองใหม่อีกครั้งนะ"), 500
 
 
 if __name__ == "__main__":

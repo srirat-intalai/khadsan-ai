@@ -113,8 +113,9 @@
 {% endmacro %}
 
 
-<!-- ===== แถบบน ===== -->
-<div class="nav"><div class="brand">{{ icons.leaf|safe }}KhadSan AI</div></div>
+<!-- ===== แถบบน (header / main / footer ช่วยให้โปรแกรมอ่านหน้าจอกระโดดไปเนื้อหาหลักได้) ===== -->
+<header class="nav"><div class="brand">{{ icons.leaf|safe }}KhadSan AI</div></header>
+<main>
 
 
 <!-- ===== หัวเว็บ ===== -->
@@ -202,15 +203,13 @@
                     <div class="tag-row"><span class="tag-key">พบทั้งหมด</span><span class="tag-line">{{ summary.total }} ลูก</span></div>
                     <div class="tag-row"><span class="tag-key">คัดออก</span>{% if summary.bad_nums %}<span class="tag-line tag-bad">{{ summary.bad_nums|join(", ") }}</span>{% else %}<span class="tag-line">–</span>{% endif %}</div>
                     <div class="tag-row"><span class="tag-key">ตรวจซ้ำ</span><span class="tag-line">{% if summary.unsure_nums %}{{ summary.unsure_nums|join(", ") }}{% else %}–{% endif %}</span></div>
-                    <div class="tag-row"><span class="tag-key">สด</span><span class="tag-line">{{ summary.good }} ลูก{% if all_check %} · <span class="nowrap">ควรดูอีกทีทุกลูก</span>{% elif summary.check_nums %} · <span class="nowrap">ควรดูอีกที</span> {{ summary.check_nums|join(", ") }}{% endif %}</span></div>
+                    <div class="tag-row"><span class="tag-key">สด</span><span class="tag-line">{{ summary.good }} ลูก{% if all_check %} · ควรดูอีกทีทุกลูก{% elif summary.check_nums %} · <span class="nowrap">ควรดูอีกที</span> {{ summary.check_nums|join(", ") }}{% endif %}</span></div>
                     {% endif %}
                     <div class="tag-foot">ตรวจโดย KhadSan AI</div>
                 </div>
             </div></div>
             {% if summary.total == 0 %}
             <div class="tag-warn">ลองถ่ายใหม่ให้เห็นผลไม้ทั้งลูก แสงพอ ดูวิธีใน "AI ตัดสินจากอะไร"</div>
-            {% elif all_check %}
-            <div class="tag-warn">ลูกสดทุกลูก AI มั่นใจไม่ถึง {{ high_conf }}% ควรหยิบดูด้วยตาอีกที</div>
             {% endif %}
             {# โปรแกรมอ่านหน้าจอจะอ่านสรุปนี้ก่อนรายการ #}
             <div class="sr-only" id="summary-text">ผลตรวจ: พบผลไม้ {{ summary.total }} ลูก คัดออก {{ summary.bad }} ลูก ตรวจซ้ำ {{ summary.unsure }} ลูก สด {{ summary.good }} ลูก{% if summary.check_nums %} ในนี้ควรดูอีกที {{ summary.check_nums|length }} ลูก{% endif %}</div>
@@ -284,7 +283,7 @@
             {% elif summary.unsure > 0 %}
             <div class="status status-unsure">ตรวจเสร็จ · มีลูกที่ต้องตรวจซ้ำ</div>
             {% elif all_check %}
-            <div class="status status-check">ตรวจเสร็จ · สดทั้งหมด แต่ควรดูอีกทีทุกลูก</div>
+            <div class="status status-check">ตรวจเสร็จ · AI มั่นใจไม่ถึง {{ high_conf }}% ทุกลูก ควรหยิบดูด้วยตาอีกที</div>
             {% elif summary.check_nums %}
             <div class="status status-check">ตรวจเสร็จ · สดทั้งหมด แต่มีลูกที่ควรดูอีกที</div>
             {% else %}
@@ -330,9 +329,9 @@
             {% if error %}
             <div class="error-box" role="alert">{{ error }}</div>
             {% elif not model_ready %}
-            <div class="error-box">ยังไม่มีไฟล์โมเดล (models/best_detect.pt) ทีมกำลังเทรนอยู่</div>
+            <div class="error-box">ยังไม่มีไฟล์โมเดล ให้วาง best_detect.pt ไว้ใน web/models/ แล้วเปิดเว็บใหม่</div>
             {% endif %}
-            <div class="card-sub">เปิดกล้องถ่ายเลย หรือเลือกรูปจากเครื่อง<br>jpg / png ไม่เกิน {{ max_mb }} MB</div>
+            <div class="card-sub">เปิดกล้องถ่ายเลย หรือเลือกรูปจากเครื่อง<br>jpg / png / webp ไม่เกิน {{ max_mb }} MB</div>
             <div class="known">โมเดลรู้จัก {{ thai_names|length }} ชนิด: {{ thai_names|join(" · ") }}</div>
             {{ scan_form("ตรวจเลย") }}
         </div>
@@ -366,14 +365,15 @@
 
 </div>
 {% endif %}
+</main>
 
 
 <!-- ===== แถบท้ายเว็บ ===== -->
-<div class="footer">
+<footer class="footer">
     <div class="footer-brand">KhadSan AI</div>
     <span class="caption">คัดของสด ก่อนของเน่าหลุดถึงมือลูกค้า</span>
     <div class="footer-small">โปรเจกต์วิชา CS461 AI for Business Solutions · โมเดล YOLOv8 ที่ทีมเทรนด้วย Fruits Quality Dataset (Roboflow, CC BY 4.0)</div>
-</div>
+</footer>
 
 </div>
 </body>

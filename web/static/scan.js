@@ -399,9 +399,19 @@ function sendFrame() {
     sendCanvas.getContext("2d").drawImage(video, 0, 0, sendCanvas.width, sendCanvas.height);
 
     sendCanvas.toBlob(function (blob) {
+        // แปลงภาพไม่สำเร็จ (เกิดได้ตอนกล้องเพิ่งปิด) ข้ามภาพนี้ไป
+        if (!blob) {
+            liveTimer = setTimeout(sendFrame, 300);
+            return;
+        }
         var data = new FormData();
         data.append("frame", blob, "frame.jpg");
-        fetch(liveUrl, { method: "POST", body: data })
+        // รอผลไม่เกิน 8 วิ เน็ตค้างจะได้ไม่ค้างทั้งโหมด (ยกเลิกแล้วจะไปเข้า catch แล้วส่งภาพใหม่)
+        var waiting = new AbortController();
+        var giveUp = setTimeout(function () {
+            waiting.abort();
+        }, 8000);
+        fetch(liveUrl, { method: "POST", body: data, signal: waiting.signal })
             .then(function (res) {
                 return res.json();
             })
@@ -417,6 +427,7 @@ function sendFrame() {
                 }
             })
             .then(function () {
+                clearTimeout(giveUp);
                 // ไม่ว่าผลจะมาหรือพัง ค่อยส่งภาพต่อไป (เว้นนิดนึง ไม่ให้เครื่องทำงานหนักเกิน)
                 if (liveOn) {
                     liveTimer = setTimeout(sendFrame, 150);
