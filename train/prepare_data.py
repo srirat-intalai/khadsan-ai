@@ -15,6 +15,8 @@
 #   - รูป Kaggle ไม่มีกรอบ เลยให้โมเดลรอบแรกช่วยหาตำแหน่งผลไม้ (กรอบ) ส่วนคำตอบ สด/เน่า ใช้ชื่อโฟลเดอร์
 #   - เก็บเฉพาะกรอบที่โมเดลเห็นเป็น "ชนิดเดียวกับชื่อโฟลเดอร์" (ถ้าเห็นเป็นชนิดอื่น กรอบมักวางผิดที่ เช่น ไปตีกรอบใบไม้)
 #   - ข้ามรูปที่คล้ายรูปในชุดทดสอบภายนอก (ไม่งั้นข้อสอบรั่ว คะแนนดูดีเกินจริง)
+#   - เพิ่มรูปพื้นหลังที่ไม่มีผลไม้ (คน ของใช้ รถ สัตว์ จาก COCO128) แบบไม่มีกรอบ สอนโมเดลว่า "แบบนี้ไม่ใช่ผลไม้"
+#     (รอบแรกโมเดลไม่เคยเห็นรูปไม่มีผลไม้เลย เลยตีกรอบหน้าคนเป็นทับทิม)
 #   - รันในเครื่องตัวเอง (ต้องมีโมเดลรอบแรกที่ web/models/best_detect.pt):  python prepare_data.py --make-boxes
 #
 # วิธีรัน (ในโฟลเดอร์ train):  python prepare_data.py
@@ -36,6 +38,8 @@ KAGGLE_DIR = "datasets/fruit_diseases_kaggle"     # ชุดทดสอบภ�
 EXTERNAL_DIR = "datasets/external_test"           # ที่เก็บชุดทดสอบภายนอก
 BOX_DIR = "datasets/kaggle_boxes"                 # รูป Kaggle ที่ตีกรอบให้แล้ว (ส่วนที่ 3)
 BOX_MODEL = "../web/models/best_detect.pt"        # โมเดลรอบแรก ใช้หาตำแหน่งผลไม้
+BG_DIR = "datasets/coco128"                       # รูปพื้นหลัง COCO128 (ไม่มีก็ข้าม)
+COCO_FRUITS = [46, 47, 49]                        # เลขคลาสใน COCO ของ กล้วย แอปเปิล ส้ม รูปที่มีพวกนี้ไม่เอามาเป็นพื้นหลัง
 
 # ชื่อคลาสในชุดเดิมของ Roboflow (เรียงตาม data.yaml ของเขา ห้ามสลับ)
 OLD_NAMES = ["Apple_Bad", "Apple_Good", "Banana_Bad", "Banana_Good", "Good_Apple-Bad_Apple",
@@ -396,9 +400,40 @@ def make_kaggle_boxes():
         print(new_name, "เซฟ", saved, "| ข้าม: คล้ายชุดทดสอบ", same_as_test, "รูปซ้ำ", repeat, "หากรอบไม่เจอ", no_box)
 
 
+# รูปพื้นหลังที่ไม่มีผลไม้ : ก๊อปมาพร้อมไฟล์ป้ายว่างๆ (ไม่มีกรอบ = ไม่มีผลไม้ในรูปนี้)
+def add_backgrounds():
+    img_folder = os.path.join(BG_DIR, "images", "train2017")
+    lab_folder = os.path.join(BG_DIR, "labels", "train2017")
+    if not os.path.isdir(img_folder):
+        print("ไม่มีโฟลเดอร์", img_folder, "ข้ามรูปพื้นหลัง")
+        return
+    saved = 0
+    has_fruit = 0
+    for f in sorted(os.listdir(img_folder)):
+        if not f.lower().endswith(".jpg"):
+            continue
+        # รูปที่มีกล้วย แอปเปิล ส้ม ไม่เอา (ไม่งั้นจะสอนผิดว่าผลไม้พวกนี้ไม่ใช่ผลไม้)
+        fruit = False
+        label_file = os.path.join(lab_folder, os.path.splitext(f)[0] + ".txt")
+        if os.path.exists(label_file):
+            for line in open(label_file, encoding="utf-8"):
+                p = line.split()
+                if len(p) > 0 and int(p[0]) in COCO_FRUITS:
+                    fruit = True
+        if fruit:
+            has_fruit = has_fruit + 1
+            continue
+        name = "background_" + str(saved + 1).zfill(4)
+        shutil.copy(os.path.join(img_folder, f), os.path.join(BOX_DIR, "images", name + ".jpg"))
+        open(os.path.join(BOX_DIR, "labels", name + ".txt"), "w").close()
+        saved = saved + 1
+    print("รูปพื้นหลัง (ไม่มีผลไม้) เพิ่ม", saved, "รูป | ข้ามรูปที่มีผลไม้", has_fruit)
+
+
 # ===== เริ่มทำงาน =====
 if MAKE_BOXES:
     make_kaggle_boxes()
+    add_backgrounds()
     print("เสร็จส่วนที่ 3 รูป Kaggle ที่ตีกรอบแล้วอยู่ที่", os.path.abspath(BOX_DIR))
     sys.exit()
 

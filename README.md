@@ -109,6 +109,10 @@ baseline = เริ่มจาก yolov8n ที่เทรนกับ COCO 
 - รูป Kaggle ไม่มีกรอบ เลยให้โมเดลรอบแรกช่วยตีกรอบ แล้วใช้ชื่อโฟลเดอร์ Kaggle เป็นคำตอบ สด/เน่า
   เก็บเฉพาะกรอบที่โมเดลเห็นเป็นผลไม้ชนิดเดียวกับชื่อโฟลเดอร์ และกรอบต้องกินพื้นที่รูปพอ (สุ่มดูด้วยตาแล้ว กรอบถูกราว 95%)
 - เทียบ `5_cosine_lr` (ข้อมูลเดิม) กับ `8_cosine_more_data` (ข้อมูลเดิม + Kaggle) ใช้ train/val/test ชุดเดียวกัน
+- รอบเดียวกันนี้ ทดลองแก้ RMSProp ที่เทรนไม่นิ่ง : `4_rmsprop` (lr 0.001) เทียบ `9_rmsprop_low_lr` (lr 0.0001)
+- เพิ่ม**รูปพื้นหลังที่ไม่มีผลไม้** 126 รูป (คน ของใช้ รถ สัตว์ จาก COCO128) แบบไม่มีกรอบ เข้าไปในการทดลอง 8 ด้วย
+  เพราะรอบแรกโมเดลไม่เคยเห็นรูปที่ไม่มีผลไม้ ตอนลองกับกล้องเลยตีกรอบหน้าคนเป็นทับทิม (ความมั่นใจราว 32%)
+- เว็บขยับค่าความมั่นใจขั้นต่ำจาก 0.25 เป็น 0.40 : วัดบน test แล้ว เสียผลไม้จริงแค่ 2 จาก 1,055 ลูก แต่ตัดกรอบมั่วความมั่นใจต่ำออกได้
 - ผลจะใส่ตรงนี้หลังเทรนเสร็จ
 
 
@@ -117,8 +121,9 @@ baseline = เริ่มจาก yolov8n ที่เทรนกับ COCO 
 ```
 train/
   prepare_data.py       เตรียมข้อมูล (ชุดเทรน + ชุดทดสอบภายนอก + ตีกรอบรูป Kaggle สำหรับรอบ 2)
-  train_yolo.py         เทรน 8 การทดลอง + วัดผล + กราฟ/ตาราง
-  train_colab.ipynb     โน้ตบุ๊กสำหรับ Google Colab (ดึงโค้ด 2 ไฟล์บนมารัน)
+  train_yolo.py         เทรน 9 การทดลอง + วัดผล + กราฟ/ตาราง
+  train_round1.ipynb    โน้ตบุ๊ก Colab รอบ 1 : Model Tuning 7 การทดลอง
+  train_round2.ipynb    โน้ตบุ๊ก Colab รอบ 2 : เพิ่มข้อมูล + แก้ RMSProp
   datasets/             ที่วางข้อมูล (ไม่ขึ้น GitHub ไฟล์ใหญ่)
 web/
   app.py                หน้าเว็บ Flask + เรียกโมเดล + วาดกรอบ
@@ -140,25 +145,35 @@ results/                กราฟ ตาราง ผลการทดลอ
 
 ## วิธีเทรนโมเดล (Google Colab)
 
-1. เปิด `train/train_colab.ipynb` ใน Google Colab
-2. Runtime → Change runtime type → **T4 GPU**
-3. เตรียม dataset อย่างใดอย่างหนึ่ง
-   - ใส่ Roboflow API key ใน Colab Secrets ชื่อ `ROBOFLOW_API_KEY` (ห้ามพิมพ์ key ลงในโค้ด) หรือ
-   - zip โฟลเดอร์ `train/datasets/fruits_quality` ตั้งชื่อ `FruitsQuality.zip` อัปโหลดไว้ใน Google Drive โฟลเดอร์ `KhadSan_detect`
-4. (แนะนำ) zip `train/datasets/external_test` ตั้งชื่อ `ExternalTest.zip` อัปโหลดไว้ที่เดียวกัน
-5. ตั้ง `ROUND = 1` ในข้อ 4 ของโน้ตบุ๊ก แล้ว Runtime → **Run all** ผลเก็บใน Drive โฟลเดอร์ `KhadSan_detect` (หลุดกลางทาง กด Run all ใหม่ จะทำต่อจากที่ค้าง)
-6. เอา `models/best_detect.pt` กับ `models/class_info.json` มาวางใน `web/models/`
+มี 2 โน้ตบุ๊ก แยกตามรอบ ทุกช่องมีตัวเช็ก ถ้าข้อมูลหรือโค้ดไม่ครบจะหยุดพร้อมบอกเหตุผล
 
-**รอบ 2 (เพิ่มรูป Kaggle)** ทำในเครื่องตัวเองก่อน (ต้องมีโฟลเดอร์ Kaggle ที่ `train/datasets/fruit_diseases_kaggle` และโมเดลรอบแรกใน `web/models/`)
+| โน้ตบุ๊ก | ทำอะไร | ผลเก็บใน Drive | เวลา |
+|---|---|---|---|
+| `train/train_round1.ipynb` | Model Tuning 7 การทดลอง (1-7) | `KhadSan_detect` | 2-3 ชม. |
+| `train/train_round2.ipynb` | เพิ่มรูป Kaggle + รูปพื้นหลัง (8) และแก้ RMSProp (9) เทียบกับ 5 และ 4 | `KhadSan_detect_v2` | 2.5-3 ชม. |
+
+ขั้นตอน (ทั้ง 2 รอบ)
+1. push โฟลเดอร์ `train/` ล่าสุดขึ้น GitHub (โน้ตบุ๊กดึงโค้ดจาก repo และเช็กว่าเป็นรุ่นล่าสุด)
+2. เปิดโน้ตบุ๊กใน Colab : File → Open notebook → GitHub → `srirat-intalai/khadsan-ai`
+3. Runtime → Change runtime type → **T4 GPU**
+4. dataset หลัก : ใส่ Roboflow API key ใน Colab Secrets ชื่อ `ROBOFLOW_API_KEY` (ห้ามพิมพ์ key ลงในโค้ด)
+   หรือ zip `train/datasets/fruits_quality` เป็น `FruitsQuality.zip` อัปโหลดไว้ในโฟลเดอร์ Drive ของรอบนั้น
+5. อัปโหลดไฟล์ของรอบนั้นไว้ในโฟลเดอร์ Drive (ดูด้านล่าง) แล้ว Runtime → **Run all** (หลุดกลางทาง กด Run all ใหม่ จะทำต่อจากที่ค้าง)
+6. เอา `models/best_detect.pt` กับ `models/class_info.json` ของตัวที่ดีที่สุดมาวางใน `web/models/`
+
+ไฟล์ที่ต้องอัปโหลด
+- รอบ 1 : `ExternalTest.zip` (แนะนำ)
+- รอบ 2 : `ExternalTest.zip` และ `KaggleBoxes.zip` (บังคับทั้งคู่)
+
+สร้างไฟล์ zip ในเครื่องตัวเอง (ต้องมีโฟลเดอร์ Kaggle ที่ `train/datasets/fruit_diseases_kaggle`, COCO128 ที่ `train/datasets/coco128` และโมเดลรอบแรกใน `web/models/`)
 
 ```bash
 cd train
 python prepare_data.py                 # ทำชุดทดสอบภายนอก (datasets/external_test)
-python prepare_data.py --make-boxes    # ตีกรอบรูป Kaggle (datasets/kaggle_boxes) ต้องลง ultralytics
+python prepare_data.py --make-boxes    # ตีกรอบรูป Kaggle + เพิ่มรูปพื้นหลัง (datasets/kaggle_boxes) ต้องลง ultralytics
 ```
 
-แล้ว zip `datasets/external_test` เป็น `ExternalTest.zip` กับ `datasets/kaggle_boxes` เป็น `KaggleBoxes.zip`
-อัปโหลดไว้ใน Drive โฟลเดอร์ `KhadSan_detect_v2` ตั้ง `ROUND = 2` ในโน้ตบุ๊ก แล้ว Run all
+แล้ว zip `datasets/external_test` เป็น `ExternalTest.zip` และ `datasets/kaggle_boxes` เป็น `KaggleBoxes.zip`
 
 
 ## วิธีเปิดเว็บในเครื่อง
@@ -227,6 +242,7 @@ cloudflared tunnel --url http://localhost:7860                # หน้าต�
   https://universe.roboflow.com/alex-day-qzfwa/fruits-quality-qtdtf : สัญญาอนุญาต **CC BY 4.0**
 - Fruit and Vegetable Disease (Healthy vs Rotten) โดย `muhammad0subhan` บน Kaggle
   https://www.kaggle.com/datasets/muhammad0subhan/fruit-and-vegetable-disease-healthy-vs-rotten : ดูเงื่อนไขการใช้งานในหน้า Kaggle
+- COCO128 (ชุดตัวอย่าง 128 รูปจาก COCO 2017 ของ Ultralytics) ใช้เป็นรูปพื้นหลังที่ไม่มีผลไม้ : https://cocodataset.org (ภาพตามเงื่อนไข COCO Terms of Use)
 
 **ซอฟต์แวร์**
 - [Ultralytics YOLOv8](https://github.com/ultralytics/ultralytics) ใช้สัญญาอนุญาต **AGPL-3.0**

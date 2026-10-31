@@ -14,7 +14,7 @@
 #
 # วิธีรัน:  python train_yolo.py --data datasets/data_5fruits/data.yaml --out โฟลเดอร์เก็บผล
 # ทดสอบกับรูปจากแหล่งอื่นด้วย:  เติม --external datasets/external_test
-# รอบ 2 (เพิ่มรูป Kaggle) :  เติม --more-data datasets/data_5fruits/data_more.yaml --only 5_cosine_lr,8_cosine_more_data
+# รอบ 2 (เพิ่มรูป Kaggle + แก้ RMSProp) :  เติม --more-data datasets/data_5fruits/data_more.yaml --only 5_cosine_lr,8_cosine_more_data,4_rmsprop,9_rmsprop_low_lr
 # ทดสอบโค้ดเร็วๆ (รูปน้อย 1 epoch):  เติม --quick
 
 import os
@@ -92,6 +92,8 @@ EXPERIMENTS = [
     {"name": "7_no_weight_decay", "model": "yolov8n.pt", "optimizer": "SGD", "lr0": 0.01, "cos_lr": False, "lrf": 1.0, "batch": 16, "weight_decay": 0.0},
     # รอบ 2 : ค่าเดียวกับตัวที่ดีที่สุด (5_cosine_lr) แต่ชุดเทรนเพิ่มรูป Kaggle (val/test ชุดเดิม เทียบกันได้ยุติธรรม)
     {"name": "8_cosine_more_data", "model": "yolov8n.pt", "optimizer": "SGD", "lr0": 0.01, "cos_lr": True, "lrf": 0.01, "batch": 16, "weight_decay": 0.0005, "more_data": True},
+    # รอบ 2 : รอบแรก RMSProp (lr 0.001) loss พุ่งไปหลักหมื่นแล้วคะแนนแกว่งตลอด ลองลด lr ลง 10 เท่า ดูว่านิ่งขึ้นไหม
+    {"name": "9_rmsprop_low_lr", "model": "yolov8n.pt", "optimizer": "RMSProp", "lr0": 0.0001, "cos_lr": False, "lrf": 1.0, "batch": 16, "weight_decay": 0.0005},
 ]
 
 
@@ -418,6 +420,7 @@ plot_compare(["2_pretrained_sgd", "5_cosine_lr"], "compare_lr_fixed_vs_cosine.pn
 plot_compare(["2_pretrained_sgd", "6_batch32"], "compare_batch16_vs_32.png", "Batch 16 vs 32")
 plot_compare(["2_pretrained_sgd", "7_no_weight_decay"], "compare_weight_decay.png", "Weight decay (L2) vs none")
 plot_compare(["5_cosine_lr", "8_cosine_more_data"], "compare_more_data.png", "Original data vs + Kaggle images")
+plot_compare(["4_rmsprop", "9_rmsprop_low_lr"], "compare_rmsprop_lr.png", "RMSProp lr 0.001 vs 0.0001")
 all_names = []
 for e in EXPERIMENTS:
     all_names.append(e["name"])
