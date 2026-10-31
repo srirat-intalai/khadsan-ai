@@ -65,19 +65,25 @@
 
 {# ===== ฟอร์มใส่รูป (ใช้ทั้งตอนเริ่ม และตอน "สแกนรูปต่อไป") ===== #}
 {% macro scan_form(button_text) %}
-<form class="scan-form" method="post" action="{{ url_for('scan') }}#scan" enctype="multipart/form-data" data-max-mb="{{ max_mb }}">
+<form class="scan-form" method="post" action="{{ url_for('scan') }}#scan" enctype="multipart/form-data" data-max-mb="{{ max_mb }}" data-live-url="{{ url_for('live') }}">
     {# ===== โหมดกล้อง : ซ่อนไว้ก่อน scan.js จะโชว์ให้เองถ้าเครื่องนี้เปิดกล้องได้ ===== #}
     <div class="cam-row" hidden>
         <button class="pill cam-open" type="button">{{ icons.camera|safe }} เปิดกล้อง</button>
         <span class="cam-or">หรือเลือกรูปจากเครื่องด้านล่าง</span>
     </div>
     <div class="cam" hidden>
-        {# ภาพสดจากกล้อง (ยังไม่ส่งไปไหน จนกว่าจะกด ถ่าย แล้วกดตรวจ) #}
-        <video class="cam-video" playsinline muted></video>
+        {# ภาพสดจากกล้อง + ผืนวาดกรอบตอนสแกนสด (ภาพจะถูกส่งไปตรวจเฉพาะตอนกด สแกนสด หรือ ถ่ายแล้วกดตรวจ) #}
+        <div class="cam-stage">
+            <video class="cam-video" playsinline muted></video>
+            <canvas class="cam-boxes" aria-hidden="true"></canvas>
+        </div>
+        <div class="live-info" aria-live="polite" hidden></div>
         <div class="cam-actions">
             <button class="pill cam-shot" type="button">ถ่าย</button>
+            <button class="pill cam-live" type="button" aria-pressed="false">สแกนสด</button>
             <button class="pill cam-close" type="button">ปิดกล้อง</button>
         </div>
+        <div class="cam-note">สแกนสด = เล็งกล้องค้างไว้ กรอบจะขึ้นตามผลไม้ · อยากได้เหตุผลทีละลูก กด "ถ่าย" แล้วตรวจ</div>
     </div>
     <div class="cam-msg" role="alert" hidden></div>
 

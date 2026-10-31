@@ -7,7 +7,7 @@ import os
 import io
 import json
 import base64
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from PIL import Image, ImageOps, ImageDraw, ImageFont, ImageStat
 
 
@@ -321,6 +321,35 @@ def scan():
         photo=photo, fruits=fruits[:MAX_FRUITS], more=more, summary=summary,
         rgb=rgb, small_size=small_size, original_size=img.size,
         low_conf=LOW_CONF, high_conf=HIGH_CONF)
+
+
+# ===== สแกนสด =====
+# หน้าเว็บส่งภาพจากกล้องมาทีละภาพ (ย่อแล้ว) ตอบกลับเป็นตำแหน่งกรอบ + สด/เน่า ให้หน้าเว็บวาดทับภาพสดเอง
+# ไม่เก็บรูป ไม่วาดรูปส่งกลับ ส่งแค่ตัวเลข จะได้เร็ว
+@app.route("/live", methods=["POST"])
+def live():
+    file = request.files.get("frame")
+    if file is None or not os.path.exists(MODEL_FILE):
+        return jsonify({"ok": False, "boxes": []})
+    try:
+        img = Image.open(file.stream, formats=["JPEG"])
+        if img.width * img.height > MAX_PIXELS:
+            return jsonify({"ok": False, "boxes": []})
+        img.load()
+        img = img.convert("RGB")
+        fruits = detect(img)
+    except Exception:
+        return jsonify({"ok": False, "boxes": []})
+
+    # ตำแหน่งกรอบเป็นสัดส่วน 0-1 ของรูป หน้าเว็บจะคูณกับขนาดภาพบนจอเอง
+    w, h = img.size
+    boxes = []
+    for f in fruits:
+        boxes.append({"x1": f["box"][0] / w, "y1": f["box"][1] / h, "x2": f["box"][2] / w, "y2": f["box"][3] / h,
+                      "thai": f["thai"], "state": f["state"], "conf": f["conf"]})
+    summary = count_states(fruits)
+    return jsonify({"ok": True, "boxes": boxes, "total": summary["total"],
+                    "good": summary["good"], "bad": summary["bad"], "unsure": summary["unsure"]})
 
 
 # ไฟล์ใหญ่เกิน MAX_MB

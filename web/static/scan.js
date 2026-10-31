@@ -1,10 +1,11 @@
 // JavaScript ของหน้าเว็บ KhadSan AI (ทีมเขียนเอง ไม่ได้ดึงจากที่อื่น)
-// ทำ 5 อย่าง
+// ทำ 6 อย่าง
 //   1) เลือกรูปแล้ว โชว์รูปตัวอย่างให้ดูก่อนกดตรวจ (รูปยังไม่ถูกส่งไปไหน จนกว่าจะกดปุ่ม)
 //   2) ไฟล์ใหญ่เกินกำหนด บอกเลยตั้งแต่ตอนเลือก ไม่ต้องรอส่ง
 //   3) กดตรวจแล้ว ปุ่ม + ขั้นตอน + กรอบสแกน บอกว่า "AI กำลังตรวจ…" และกดซ้ำไม่ได้
 //   4) โหมดกล้อง : เปิดกล้อง (เว็บแคมบนคอม / กล้องหลังมือถือ) -> กดถ่าย -> รูปเข้าช่องเลือกรูปเหมือนอัปโหลด
 //   5) ได้ผลแล้ว ติ๊กขั้นตอนทีละขั้น (~5 วิ) แล้วค่อยโชว์ผล ให้เห็นว่า AI ทำอะไรไปทีละขั้น
+//   6) สแกนสด : ส่งภาพจากกล้องไปตรวจทีละภาพ แล้ววาดกรอบทับภาพสด (ส่งภาพใหม่ก็ต่อเมื่อผลภาพเก่ากลับมาแล้ว เน็ตช้าก็ไม่ค้าง)
 // ถ้าเบราว์เซอร์ปิด JavaScript ไฟล์นี้จะไม่ทำงาน แต่เว็บยังส่งรูปและเห็นผลได้ตามปกติ
 
 var page = document.documentElement;
@@ -135,8 +136,9 @@ function showCamMsg(text) {
     camMsg.hidden = false;
 }
 
-// ปิดกล้อง : หยุดทุกสัญญาณภาพ ไฟกล้องดับ แล้วกลับไปโชว์ปุ่มเปิดกล้อง
+// ปิดกล้อง : หยุดสแกนสด หยุดทุกสัญญาณภาพ ไฟกล้องดับ แล้วกลับไปโชว์ปุ่มเปิดกล้อง
 function closeCamera() {
+    stopLive();
     if (stream) {
         var tracks = stream.getTracks();
         for (var i = 0; i < tracks.length; i++) {
@@ -261,4 +263,152 @@ if (page.classList.contains("play")) {
         skipRow.querySelector(".skip-anim").addEventListener("click", showResult);
     }
     nextStep();
+}
+
+
+// ----- 6) สแกนสด -----
+var liveUrl = form.getAttribute("data-live-url");
+var liveBtn = form.querySelector(".cam-live");
+var boxCanvas = form.querySelector(".cam-boxes");
+var liveInfo = form.querySelector(".live-info");
+var sendCanvas = document.createElement("canvas");   // ผืนไว้ย่อภาพก่อนส่ง (ไม่โชว์บนหน้าเว็บ)
+var liveOn = false;
+var liveTimer = null;
+
+// สีกรอบ (สีเดียวกับกรอบในรูปผลตรวจ)
+var liveColors = { good: "#4F6815", bad: "#A63A12", unsure: "#5E544B" };
+var liveWords = { good: "สด", bad: "เน่า", unsure: "ตรวจซ้ำ" };
+
+liveBtn.addEventListener("click", function () {
+    if (liveOn) {
+        stopLive();
+    } else {
+        startLive();
+    }
+});
+
+function startLive() {
+    liveOn = true;
+    liveBtn.textContent = "หยุดสแกน";
+    liveBtn.setAttribute("aria-pressed", "true");
+    liveInfo.textContent = "กำลังเริ่มสแกน…";
+    liveInfo.hidden = false;
+    sendFrame();
+}
+
+function stopLive() {
+    liveOn = false;
+    clearTimeout(liveTimer);
+    liveBtn.textContent = "สแกนสด";
+    liveBtn.setAttribute("aria-pressed", "false");
+    liveInfo.hidden = true;
+    boxCanvas.getContext("2d").clearRect(0, 0, boxCanvas.width, boxCanvas.height);
+}
+
+// ส่งภาพ 1 ภาพไปตรวจ พอผลกลับมา ค่อยส่งภาพต่อไป
+function sendFrame() {
+    if (!liveOn) {
+        return;
+    }
+    // กล้องยังไม่พร้อม หรือสลับไปแอปอื่นอยู่ รอแป๊บแล้วค่อยลองใหม่
+    if (!stream || video.videoWidth == 0 || document.hidden) {
+        liveTimer = setTimeout(sendFrame, 300);
+        return;
+    }
+    // ย่อภาพให้ด้านยาวไม่เกิน 640 (ขนาดที่โมเดลใช้) ส่งเร็วขึ้น
+    var scale = Math.min(1, 640 / Math.max(video.videoWidth, video.videoHeight));
+    sendCanvas.width = Math.round(video.videoWidth * scale);
+    sendCanvas.height = Math.round(video.videoHeight * scale);
+    sendCanvas.getContext("2d").drawImage(video, 0, 0, sendCanvas.width, sendCanvas.height);
+
+    sendCanvas.toBlob(function (blob) {
+        var data = new FormData();
+        data.append("frame", blob, "frame.jpg");
+        fetch(liveUrl, { method: "POST", body: data })
+            .then(function (res) {
+                return res.json();
+            })
+            .then(function (result) {
+                if (liveOn) {
+                    drawLiveBoxes(result.boxes);
+                    showLiveInfo(result);
+                }
+            })
+            .catch(function () {
+                if (liveOn) {
+                    liveInfo.textContent = "เน็ตช้าหรือหลุด กำลังลองใหม่… (ใช้ปุ่ม ถ่าย แทนได้)";
+                }
+            })
+            .then(function () {
+                // ไม่ว่าผลจะมาหรือพัง ค่อยส่งภาพต่อไป (เว้นนิดนึง ไม่ให้เครื่องทำงานหนักเกิน)
+                if (liveOn) {
+                    liveTimer = setTimeout(sendFrame, 150);
+                }
+            });
+    }, "image/jpeg", 0.7);
+}
+
+// วาดกรอบทับภาพสด
+function drawLiveBoxes(boxes) {
+    var w = video.clientWidth;
+    var h = video.clientHeight;
+    boxCanvas.width = w;
+    boxCanvas.height = h;
+    var ctx = boxCanvas.getContext("2d");
+    ctx.clearRect(0, 0, w, h);
+
+    // ภาพกล้องแสดงแบบไม่บีบ (อาจมีขอบว่างด้านข้าง) คำนวณว่าตัวภาพจริงอยู่ตรงไหนก่อน
+    var s = Math.min(w / video.videoWidth, h / video.videoHeight);
+    var pw = video.videoWidth * s;
+    var ph = video.videoHeight * s;
+    var ox = (w - pw) / 2;
+    var oy = (h - ph) / 2;
+
+    ctx.font = "600 14px Anuphan, sans-serif";
+
+    // รอบที่ 1 : วาดกรอบทุกลูก (ขอบครีมรอบนอก + กรอบสีด้านใน แบบเดียวกับรูปผลตรวจ เห็นชัดทุกพื้นหลัง)
+    for (var i = 0; i < boxes.length; i++) {
+        var b = boxes[i];
+        var x = ox + b.x1 * pw;
+        var y = oy + b.y1 * ph;
+        var bw = (b.x2 - b.x1) * pw;
+        var bh = (b.y2 - b.y1) * ph;
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = "#FDFBF9";
+        ctx.strokeRect(x, y, bw, bh);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = liveColors[b.state];
+        ctx.strokeRect(x, y, bw, bh);
+    }
+
+    // รอบที่ 2 : วาดป้ายชื่อทีหลัง ป้ายจะไม่โดนเส้นกรอบของลูกอื่นทับ เช่น "ส้ม เน่า 91%"
+    for (var j = 0; j < boxes.length; j++) {
+        var c = boxes[j];
+        var lx = ox + c.x1 * pw;
+        var ly = oy + c.y1 * ph - 22;
+        if (ly < 0) {
+            ly = oy + c.y1 * ph;      // กรอบชิดขอบบน วางป้ายไว้ในกรอบแทน
+        }
+        var label = c.thai + " " + liveWords[c.state] + " " + c.conf + "%";
+        ctx.fillStyle = liveColors[c.state];
+        ctx.fillRect(lx, ly, ctx.measureText(label).width + 12, 22);
+        ctx.fillStyle = "#FDFBF9";
+        ctx.fillText(label, lx + 6, ly + 16);
+    }
+}
+
+
+// สรุปใต้ภาพสด (เปลี่ยนข้อความเฉพาะตอนผลเปลี่ยน โปรแกรมอ่านหน้าจอจะได้ไม่อ่านซ้ำรัวๆ)
+function showLiveInfo(result) {
+    var text = "";
+    if (!result.ok) {
+        text = "ตอนนี้ AI ตรวจไม่ได้ ลองใหม่อีกครั้ง หรือใช้ปุ่ม ถ่าย แทน";
+    } else if (result.total == 0) {
+        text = "ยังไม่เห็นผลไม้ เล็งให้เห็นทั้งลูก แสงพอ";
+    } else {
+        text = "เห็น " + result.total + " ลูก · สด " + result.good + " · เน่า " + result.bad + " · ตรวจซ้ำ " + result.unsure;
+    }
+    if (liveInfo.textContent != text) {
+        liveInfo.textContent = text;
+    }
 }
