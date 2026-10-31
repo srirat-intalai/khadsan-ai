@@ -1,0 +1,5 @@
+name,start_from,optimizer,lr0,lr_schedule,batch,weight_decay,epochs_run,val_mAP50,test_precision,test_recall,test_f1,test_mAP50,test_mAP50_95,minutes
+4_rmsprop,pretrained,RMSProp,0.001,fixed,16,0.0005,32,0.3175,0.3069,0.4424,0.3624,0.2911,0.1489,13.2
+5_cosine_lr,pretrained,SGD,0.01,cosine,16,0.0005,60,0.975,0.9413,0.9643,0.9527,0.9698,0.6397,23.4
+8_cosine_more_data,pretrained,SGD,0.01,cosine,16,0.0005,60,0.973,0.9459,0.9417,0.9438,0.969,0.6402,61.7
+9_rmsprop_low_lr,pretrained,RMSProp,0.0001,fixed,16,0.0005,38,0.6728,0.5633,0.669,0.6116,0.6657,0.3651,15.6
