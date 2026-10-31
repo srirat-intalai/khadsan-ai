@@ -4,7 +4,7 @@
 //   2) ไฟล์ใหญ่เกินกำหนด บอกเลยตั้งแต่ตอนเลือก ไม่ต้องรอส่ง
 //   3) กดตรวจแล้ว ปุ่ม + ขั้นตอน + กรอบสแกน บอกว่า "AI กำลังตรวจ…" และกดซ้ำไม่ได้
 //   4) โหมดกล้อง : เปิดกล้อง (เว็บแคมบนคอม / กล้องหลังมือถือ) -> กดถ่าย -> รูปเข้าช่องเลือกรูปเหมือนอัปโหลด
-//   5) ได้ผลแล้ว ติ๊กขั้นตอนทีละขั้น (~5 วิ) แล้วค่อยโชว์ผล ให้เห็นว่า AI ทำอะไรไปทีละขั้น
+//   5) ได้ผลแล้ว ติ๊กขั้นตอนทีละขั้น แล้วค่อยโชว์ผล (ครั้งแรก ~5 วิ ครั้งต่อไปไม่ถึง 1 วิ)
 //   6) สแกนสด : ส่งภาพจากกล้องไปตรวจทีละภาพ แล้ววาดกรอบทับภาพสด (ส่งภาพใหม่ก็ต่อเมื่อผลภาพเก่ากลับมาแล้ว เน็ตช้าก็ไม่ค้าง)
 // ถ้าเบราว์เซอร์ปิด JavaScript ไฟล์นี้จะไม่ทำงาน แต่เว็บยังส่งรูปและเห็นผลได้ตามปกติ
 
@@ -102,6 +102,11 @@ form.addEventListener("submit", function (event) {
     }
     if (steps.length == 3) {
         steps[1].classList.add("now");
+        // หน้าเริ่มต้น ขั้นที่ 1 ยังว่างอยู่ ติ๊กให้ว่าส่งรูปแล้ว (ใส่ sent ไว้ จะได้รู้ว่า JS ติ๊กเอง)
+        if (steps[0].className == "step") {
+            steps[0].classList.add("step-done", "sent");
+            steps[0].querySelector(".mark-text").textContent = "ส่งแล้ว";
+        }
     }
     live.textContent = "ส่งรูปแล้ว AI กำลังตรวจ รอสักครู่";
 });
@@ -114,6 +119,11 @@ window.addEventListener("pageshow", function () {
     button.removeAttribute("aria-disabled");
     for (var i = 0; i < steps.length; i++) {
         steps[i].classList.remove("now");
+    }
+    // ติ๊ก "ส่งแล้ว" ที่ JS ใส่ไว้ตอนกดตรวจ เอาออกด้วย
+    if (steps.length == 3 && steps[0].classList.contains("sent")) {
+        steps[0].classList.remove("step-done", "sent");
+        steps[0].querySelector(".mark-text").textContent = "";
     }
 });
 
@@ -148,6 +158,7 @@ function closeCamera() {
     }
     video.srcObject = null;
     cam.hidden = true;
+    camBack();
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         camRow.hidden = false;
     }
@@ -164,6 +175,7 @@ form.querySelector(".cam-open").addEventListener("click", function () {
             video.play();
             camRow.hidden = true;
             cam.hidden = false;
+            camToFrame();
         })
         .catch(function (err) {
             // บอกเหตุผลเป็นภาษาไทย แล้วให้ใช้ปุ่มเลือกรูปแทน
@@ -177,6 +189,39 @@ form.querySelector(".cam-open").addEventListener("click", function () {
         });
 });
 
+// จอคอม หน้าเริ่มต้น : ย้ายภาพกล้องไปไว้ในกรอบสแกนใหญ่ด้านขวา (กรอบจะได้ไม่บอกว่า "ใส่รูปผลไม้ก่อนนะ" ตอนกล้องเปิดอยู่)
+// มือถือไม่ย้าย เพราะกรอบสแกนอยู่ล่างสุด ภาพกล้องจะห่างจากปุ่ม ถ่าย / สแกนสด แค่เปลี่ยนข้อความในกรอบ
+var camStage = form.querySelector(".cam-stage");
+var stageSubText = "";
+var camMoved = false;
+function camToFrame() {
+    if (!stage) {
+        return;
+    }
+    stageSubText = stageSub.textContent;
+    if (window.matchMedia("(min-width: 701px)").matches) {
+        stage.insertBefore(camStage, stage.firstChild);
+        stage.classList.add("has-cam");
+        stageSub.textContent = "ภาพจากกล้อง · กดถ่าย หรือสแกนสด ทางซ้าย";
+    } else {
+        stage.classList.add("cam-up");
+        stageSub.textContent = "กล้องเปิดอยู่ด้านบน · กดถ่าย หรือสแกนสด";
+    }
+    camMoved = true;
+}
+// ปิดกล้องแล้ว ย้ายภาพกล้องกลับที่เดิม (ในฟอร์มด้านซ้าย) และคืนข้อความในกรอบ
+function camBack() {
+    if (!camMoved) {
+        return;
+    }
+    if (stage.classList.contains("has-cam")) {
+        cam.insertBefore(camStage, cam.firstChild);
+    }
+    stage.classList.remove("has-cam", "cam-up");
+    stageSub.textContent = stageSubText;
+    camMoved = false;
+}
+
 // กด "ถ่าย" : เอาภาพตอนนั้นมาทำเป็นไฟล์ jpg แล้วใส่ลงช่องเลือกรูป เหมือนเลือกไฟล์เอง
 form.querySelector(".cam-shot").addEventListener("click", function () {
     if (!stream || video.videoWidth == 0) {
@@ -189,13 +234,14 @@ form.querySelector(".cam-shot").addEventListener("click", function () {
     canvas.getContext("2d").drawImage(video, 0, 0);
 
     canvas.toBlob(function (blob) {
+        // ปิดกล้องก่อน (ภาพกล้องย้ายกลับที่เดิม) แล้วค่อยใส่รูปที่ถ่าย ข้อความในกรอบจะได้เป็นของรูปใหม่
+        closeCamera();
         try {
             var file = new File([blob], "camera.jpg", { type: "image/jpeg" });
             var box = new DataTransfer();   // กล่องใส่ไฟล์ ใช้ยัดไฟล์เข้าช่องเลือกรูป
             box.items.add(file);
             input.files = box.files;
             input.dispatchEvent(new Event("change"));   // ให้โค้ดข้อ 1) ทำรูปตัวอย่างให้
-            closeCamera();
             // ถ่ายเสร็จ เลื่อนไปที่ปุ่มตรวจเลย ไม่ต้องเลื่อนหาเอง
             button.scrollIntoView({ block: "center", behavior: "smooth" });
             button.focus();
@@ -218,8 +264,19 @@ input.addEventListener("click", function () {
 
 // ----- 5) ได้ผลแล้ว : ติ๊กขั้นตอนทีละขั้น แล้วค่อยโชว์ผล -----
 // html มี class "play" (ใส่ไว้ใน index.html ตอนมีผลตรวจ) = ให้เล่น
-// เวลาแต่ละขั้น (มิลลิวินาที) รวมกันประมาณ 5 วิ
+// ครั้งแรกที่เปิดเว็บ เล่นช้าๆ รวมประมาณ 5 วิ ให้เห็นว่า AI ทำอะไรไปบ้าง
+// ครั้งต่อไป ติ๊กเร็วๆ ไม่ถึง 1 วิ (AI ตรวจเสร็จจริงไม่ถึงวิ ไม่ต้องให้รอนาน)
 var stepTimes = [800, 2000, 2200];
+var seenBefore = false;
+try {
+    seenBefore = localStorage.getItem("khadsan-seen-steps") == "yes";
+    localStorage.setItem("khadsan-seen-steps", "yes");
+} catch (e) {
+    // เบราว์เซอร์ไม่ให้จำ (เช่น โหมดไม่ระบุตัวตน) ก็เล่นแบบเต็มไป
+}
+if (seenBefore) {
+    stepTimes = [200, 250, 250];
+}
 var stepIndex = 0;
 var timer = null;
 var skipRow = document.querySelector(".skip-row");
@@ -275,8 +332,14 @@ var sendCanvas = document.createElement("canvas");   // ผืนไว้ย่
 var liveOn = false;
 var liveTimer = null;
 
-// สีกรอบ (สีเดียวกับกรอบในรูปผลตรวจ)
-var liveColors = { good: "#4F6815", bad: "#A63A12", unsure: "#5E544B" };
+// สีกรอบ อ่านจากสีที่ตั้งไว้ใน style.css (สีเดียวกับกรอบในรูปผลตรวจ)
+var cssColors = getComputedStyle(page);
+var liveColors = {
+    good: cssColors.getPropertyValue("--olive").trim(),
+    bad: cssColors.getPropertyValue("--rotten").trim(),
+    unsure: cssColors.getPropertyValue("--muted").trim()
+};
+var paperColor = cssColors.getPropertyValue("--paper").trim();
 var liveWords = { good: "สด", bad: "เน่า", unsure: "ตรวจซ้ำ" };
 
 liveBtn.addEventListener("click", function () {
@@ -374,7 +437,7 @@ function drawLiveBoxes(boxes) {
         var bw = (b.x2 - b.x1) * pw;
         var bh = (b.y2 - b.y1) * ph;
         ctx.lineWidth = 6;
-        ctx.strokeStyle = "#FDFBF9";
+        ctx.strokeStyle = paperColor;
         ctx.strokeRect(x, y, bw, bh);
         ctx.lineWidth = 3;
         ctx.strokeStyle = liveColors[b.state];
@@ -382,19 +445,54 @@ function drawLiveBoxes(boxes) {
     }
 
     // รอบที่ 2 : วาดป้ายชื่อทีหลัง ป้ายจะไม่โดนเส้นกรอบของลูกอื่นทับ เช่น "ส้ม เน่า 91%"
+    // จอแคบ (มือถือ) ใช้ป้ายสั้น "เน่า 91%" ไม่ใส่ชื่อผลไม้ ป้ายจะได้ไม่ชนกัน
+    var drawn = [];   // ป้ายที่วาดไปแล้ว ไว้เช็กว่าป้ายใหม่ทับป้ายเก่าไหม
     for (var j = 0; j < boxes.length; j++) {
         var c = boxes[j];
+        var label = liveWords[c.state] + " " + c.conf + "%";
+        if (w >= 500) {
+            label = c.thai + " " + label;
+        }
+        var lw = ctx.measureText(label).width + 12;
         var lx = ox + c.x1 * pw;
         var ly = oy + c.y1 * ph - 22;
         if (ly < 0) {
             ly = oy + c.y1 * ph;      // กรอบชิดขอบบน วางป้ายไว้ในกรอบแทน
         }
-        var label = c.thai + " " + liveWords[c.state] + " " + c.conf + "%";
-        ctx.fillStyle = liveColors[c.state];
-        ctx.fillRect(lx, ly, ctx.measureText(label).width + 12, 22);
-        ctx.fillStyle = "#FDFBF9";
+        // ทับป้ายเก่า ลองย้ายลงไปไว้ในกรอบ ถ้ายังทับอีก ไม่วาดป้ายนี้ (กรอบสียังบอกสด/เน่าอยู่)
+        if (hitLabel(drawn, lx, ly, lw)) {
+            ly = oy + c.y1 * ph;
+            if (hitLabel(drawn, lx, ly, lw)) {
+                continue;
+            }
+        }
+        drawn.push({ x: lx, y: ly, w: lw });
+        // ลูกสด = ป้ายพื้นครีม ตัวหนังสือเขียว / เน่า ตรวจซ้ำ = ป้ายพื้นทึบ (แบบเดียวกับเลขในรูปผลตรวจ)
+        if (c.state == "good") {
+            ctx.fillStyle = paperColor;
+            ctx.fillRect(lx, ly, lw, 22);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = liveColors.good;
+            ctx.strokeRect(lx + 1, ly + 1, lw - 2, 20);
+            ctx.fillStyle = liveColors.good;
+        } else {
+            ctx.fillStyle = liveColors[c.state];
+            ctx.fillRect(lx, ly, lw, 22);
+            ctx.fillStyle = paperColor;
+        }
         ctx.fillText(label, lx + 6, ly + 16);
     }
+}
+
+// เช็กว่าป้ายที่จะวาด (สูง 22) ทับป้ายที่วาดไปแล้วอันไหนไหม
+function hitLabel(drawn, x, y, w) {
+    for (var i = 0; i < drawn.length; i++) {
+        var d = drawn[i];
+        if (x < d.x + d.w && x + w > d.x && y < d.y + 22 && y + 22 > d.y) {
+            return true;
+        }
+    }
+    return false;
 }
 
 

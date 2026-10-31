@@ -119,7 +119,7 @@ def load_model():
     return model
 
 
-# ให้โมเดลหาผลไม้ในรูป ได้เป็น list ของผลไม้แต่ละลูก เรียงจากซ้ายไปขวา
+# ให้โมเดลหาผลไม้ในรูป ได้เป็น list ของผลไม้แต่ละลูก เรียงทีละแถว (บนลงล่าง ซ้ายไปขวา)
 def detect(img):
     # agnostic_nms=True : ลูกเดียวกันโดนตีกรอบ 2 ชนิด (เช่น แอปเปิล กับ ทับทิม) ให้เหลือกรอบเดียว ตัวเลขนับจะไม่เกินจริง
     result = load_model().predict(img, imgsz=IMG_SIZE, conf=CONF_MIN, iou=SAME_FRUIT,
@@ -141,10 +141,31 @@ def detect(img):
         fruits.append({"fruit": fruit, "thai": THAI_NAMES.get(fruit, fruit), "quality": quality,
                        "conf": round(conf), "box": box, "state": state})   # % ปัดเป็นเลขกลม อ่านง่าย
 
-    fruits.sort(key=left_side)
+    # ให้เลขเรียงแบบอ่านหนังสือ : แถวบนก่อน ในแถวเดียวกันซ้ายไปขวา
+    # ลูกที่จุดกลางสูงต่างจากลูกแรกของแถวไม่ถึงครึ่งความสูงของลูกนั้น ถือว่าอยู่แถวเดียวกัน
+    fruits.sort(key=middle_y)
+    rows = []
+    for f in fruits:
+        if len(rows) > 0:
+            first = rows[-1][0]
+            first_h = first["box"][3] - first["box"][1]
+            if middle_y(f) - middle_y(first) < first_h / 2:
+                rows[-1].append(f)
+                continue
+        rows.append([f])
+    fruits = []
+    for row in rows:
+        row.sort(key=left_side)
+        fruits = fruits + row
+
     for i in range(len(fruits)):
         fruits[i]["num"] = i + 1
     return fruits
+
+
+# ใช้ตอนเรียงแถว : จุดกลางของกรอบ (แนวตั้ง)
+def middle_y(f):
+    return (f["box"][1] + f["box"][3]) / 2
 
 
 # ใช้ตอนเรียงผลไม้ : ดูขอบซ้ายของกรอบ
@@ -172,7 +193,7 @@ def draw_boxes(img, fruits):
     draw = ImageDraw.Draw(out)
     line = max(5, round(max(out.size) / 120))       # รูปใหญ่ เส้นก็หนาขึ้น
     ring = max(2, line // 2)                        # ความหนาขอบครีมรอบนอก
-    font_size = max(16, round(max(out.size) / 22))  # ใหญ่พอให้อ่านเลขออกบนจอมือถือ
+    font_size = max(18, round(max(out.size) / 18))  # ใหญ่พอให้อ่านเลขออกบนจอมือถือ
     font = ImageFont.load_default(size=font_size)
 
     # วาดกรอบใหญ่ก่อน กรอบเล็กทีหลัง กรอบเล็กจะไม่โดนกรอบใหญ่ทับ
@@ -185,13 +206,21 @@ def draw_boxes(img, fruits):
         draw.rectangle([x1, y1, x2, y2], outline=box_color(f), width=line)
 
     # รอบที่ 2 : วาดป้ายเลขทีหลังกรอบทั้งหมด เลขจะไม่โดนเส้นกรอบของลูกอื่นทับ
+    # ลูกสด = ป้ายพื้นครีม เลขสีเขียว / เน่า และตรวจซ้ำ = ป้ายพื้นทึบ เลขสีครีม
+    # (คนที่แยกสีเขียวกับแดงไม่ออก ก็ยังดูออกจากพื้นป้ายว่าลูกไหนสด)
     for f in order:
         x1 = f["box"][0]
         y1 = f["box"][1]
         label = str(f["num"])
         w = draw.textlength(label, font=font)
-        draw.rectangle([x1, y1, x1 + w + font_size * 0.6, y1 + font_size * 1.3], fill=box_color(f))
-        draw.text((x1 + font_size * 0.3, y1 + font_size * 0.1), label, fill=COLOR_PAPER, font=font)
+        tag = [x1, y1, x1 + w + font_size * 0.6, y1 + font_size * 1.3]
+        if f["state"] == "good":
+            draw.rectangle(tag, fill=COLOR_PAPER, outline=COLOR_GOOD, width=ring)
+            text_color = COLOR_GOOD
+        else:
+            draw.rectangle(tag, fill=box_color(f))
+            text_color = COLOR_PAPER
+        draw.text((x1 + font_size * 0.3, y1 + font_size * 0.1), label, fill=text_color, font=font)
     return out
 
 
@@ -227,12 +256,9 @@ def add_details(img, fruits):
         else:
             f["level"] = "มั่นใจต่ำ"
 
-        # เหตุผลหลัก
-        if f["state"] == "good":
-            f["reason"] = "สีและผิวคล้ายรูป" + f["thai"] + "สดที่ AI เคยเรียน"
-        elif f["state"] == "bad":
-            f["reason"] = "เจอลักษณะคล้ายรูป" + f["thai"] + "เน่าที่ AI เคยเรียน"
-        else:
+        # เหตุผล : เขียนเฉพาะลูกที่ต้องตรวจซ้ำ ว่า AI เอนไปทางไหน (ลูกสด/เน่า มีสถานะกับ % บอกอยู่แล้ว)
+        f["reason"] = ""
+        if f["state"] == "unsure":
             if f["quality"] == "Good":
                 lean = "สด"
             else:
@@ -256,24 +282,32 @@ def add_details(img, fruits):
 
 
 # นับว่า สด / เน่า / ตรวจซ้ำ อย่างละกี่ลูก + จดเลขลูกที่ต้องคัดออก / ต้องดูซ้ำ
+# check_nums = ลูกที่ AI ว่าสด แต่มั่นใจไม่ถึงระดับสูง ควรให้คนดูอีกที
+# (ลูกเน่าถูกคัดออกอยู่แล้ว ลูกที่อันตรายคือลูกที่บอกว่าสดแต่จริงๆ เน่า แล้วหลุดไปถึงลูกค้า)
 def count_states(fruits):
-    summary = {"total": len(fruits), "good": 0, "bad": 0, "unsure": 0, "bad_nums": [], "unsure_nums": []}
+    summary = {"total": len(fruits), "good": 0, "bad": 0, "unsure": 0,
+               "bad_nums": [], "unsure_nums": [], "check_nums": []}
     for f in fruits:
         summary[f["state"]] = summary[f["state"]] + 1
         if f["state"] == "bad":
             summary["bad_nums"].append("#" + str(f["num"]))
         if f["state"] == "unsure":
             summary["unsure_nums"].append("#" + str(f["num"]))
+        if f["state"] == "good" and f["conf"] < HIGH_CONF:
+            summary["check_nums"].append("#" + str(f["num"]))
     return summary
 
 
-# ใช้ตอนเรียงรายการ : เน่า (ต้องคัดออก) ขึ้นก่อน แล้วตรวจซ้ำ แล้วสด  (เลขลูกยังเป็นเลขเดิมตามตำแหน่งในรูป)
+# ใช้ตอนเรียงรายการ : เน่า (ต้องคัดออก) ขึ้นก่อน แล้วตรวจซ้ำ แล้วสดที่ควรดูอีกที แล้วสด
+# (เลขลูกยังเป็นเลขเดิมตามตำแหน่งในรูป)
 def list_order(f):
     if f["state"] == "bad":
         return 0
     if f["state"] == "unsure":
         return 1
-    return 2
+    if f["conf"] < HIGH_CONF:
+        return 2
+    return 3
 
 
 # ===== หน้าเว็บ =====
