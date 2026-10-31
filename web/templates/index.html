@@ -67,6 +67,31 @@
 </div>
 {% endmacro %}
 
+{# ===== 1 แถวในรายการทีละลูก (all_check = ลูกสดทุกลูกควรดูอีกที ตราบอกไว้แล้ว ไม่ต้องเขียนซ้ำทุกแถว) ===== #}
+{% macro fruit_row(f, all_check) %}
+<li class="fruit-item">
+    <span class="fruit-num {{ f.state }}">{{ f.num }}</span>
+    <img class="fruit-thumb" src="{{ f.thumb }}" alt="">
+    <div class="fruit-text">
+        <div class="fruit-name">{{ f.thai }}</div>
+        <div class="fruit-state">
+            {# สดแต่มั่นใจไม่ถึงระดับสูง ให้คนดูอีกที (ลูกสดที่ทายผิดคือลูกที่หลุดไปถึงลูกค้า) #}
+            {# ถ้าทุกลูกเป็นแบบนี้ ป้ายตรวจบอกไว้แล้ว ไม่ต้องเขียนซ้ำทุกแถว #}
+            {% if f.check and all_check %}<span class="fruit-state-good">สด</span>
+            {% elif f.check %}<span class="fruit-state-good">สด</span> <span class="flag-check">ควรดูอีกที</span>
+            {% elif f.state == "good" %}<span class="fruit-state-good">สด</span>
+            {% elif f.state == "bad" %}<span class="fruit-state-bad">เน่า · คัดออก</span>
+            {% else %}<span class="fruit-state-unsure">ตรวจซ้ำ</span>{% endif %}
+            {# ลูกที่ขึ้น "ควรดูอีกที" ไม่ต้องบอกระดับซ้ำ (ไม่งั้นจะเป็น "ควรดูอีกที" คู่กับ "มั่นใจพอใช้") #}
+            <span class="fruit-conf">· ความมั่นใจ {{ f.conf }}%{% if not f.check %} <span class="nowrap">({{ f.level }})</span>{% endif %}</span>
+        </div>
+        {# เหตุผลโชว์เฉพาะลูกที่ต้องตรวจซ้ำ (ลูกอื่นสถานะกับ % บอกครบแล้ว) #}
+        {% if f.reason %}<div class="fruit-why">{{ f.reason }}</div>{% endif %}
+        {% if f.notes %}<div class="fruit-notes">อาจทำให้ AI มั่นใจน้อยลง: {{ f.notes|join(" · ") }}</div>{% endif %}
+    </div>
+</li>
+{% endmacro %}
+
 {# ===== มุม 4 มุมของกรอบสแกน ===== #}
 {% macro corners() %}<div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>{% endmacro %}
 
@@ -190,7 +215,7 @@
                     {% elif summary.unsure > 0 %}
                     <div class="stamp stamp-unsure">ตรวจซ้ำ {{ summary.unsure }} ลูก</div>
                     {% elif all_check %}
-                    <div class="stamp stamp-check">สด {{ summary.good }} ลูก</div>
+                    <div class="stamp stamp-check">สด {{ summary.good }} ลูก<span class="stamp-note">หยิบดูอีกที</span></div>
                     {% elif summary.check_nums %}
                     <div class="stamp stamp-check">ควรดูอีกที {{ summary.check_nums|length }} ลูก</div>
                     {% else %}
@@ -203,7 +228,8 @@
                     <div class="tag-row"><span class="tag-key">พบทั้งหมด</span><span class="tag-line">{{ summary.total }} ลูก</span></div>
                     <div class="tag-row"><span class="tag-key">คัดออก</span>{% if summary.bad_nums %}<span class="tag-line tag-bad">{{ summary.bad_nums|join(", ") }}</span>{% else %}<span class="tag-line">–</span>{% endif %}</div>
                     <div class="tag-row"><span class="tag-key">ตรวจซ้ำ</span><span class="tag-line">{% if summary.unsure_nums %}{{ summary.unsure_nums|join(", ") }}{% else %}–{% endif %}</span></div>
-                    <div class="tag-row"><span class="tag-key">สด</span><span class="tag-line">{{ summary.good }} ลูก{% if all_check %} · <span class="nowrap">ควรดูอีกที</span> <span class="nowrap">ทุกลูก</span>{% elif summary.check_nums %} · <span class="nowrap">ควรดูอีกที</span> {{ summary.check_nums|join(", ") }}{% endif %}</span></div>
+                    {# ทุกลูกควรดูอีกที : ถ้าตราเป็น "สด N ลูก หยิบดูอีกที" อยู่แล้ว แถวนี้บอกแค่จำนวน / ถ้าตราเป็นเรื่องอื่น (คัดออก ตรวจซ้ำ) ค่อยบอกในแถวนี้ #}
+                    <div class="tag-row"><span class="tag-key">สด</span><span class="tag-line">{{ summary.good }} ลูก{% if all_check %}{% if summary.bad > 0 or summary.unsure > 0 %} · <span class="nowrap">ควรดูอีกที</span> <span class="nowrap">ทุกลูก</span>{% endif %}{% elif summary.check_nums %} · <span class="nowrap">ควรดูอีกที</span> {{ summary.check_nums|join(", ") }}{% endif %}</span></div>
                     {% endif %}
                     <div class="tag-foot">ตรวจโดย KhadSan AI</div>
                 </div>
@@ -222,31 +248,21 @@
         <div class="card r-list">
             <h3 class="card-title">ทีละลูก</h3>
             <div class="card-sub">เลขตรงกับเลขบนกรอบในรูป · ลูกที่ต้องคัดออกอยู่บนสุด</div>
+            {# มีหลายลูก และมีลูกที่ต้องจัดการ : พับลูกสดไว้ ให้เห็นลูกที่ต้องคัดออก / ตรวจซ้ำ ก่อน ไม่ต้องเลื่อนผ่านลูกสดยาวๆ #}
+            {% set urgent = fruits|selectattr("state", "ne", "good")|list %}
+            {% set fresh = fruits|selectattr("state", "eq", "good")|list %}
+            {% set fold = fruits|length > 5 and urgent|length > 0 and fresh|length > 0 %}
             <ol class="fruit-list">
-                {% for f in fruits %}
-                <li class="fruit-item">
-                    <span class="fruit-num {{ f.state }}">{{ f.num }}</span>
-                    <img class="fruit-thumb" src="{{ f.thumb }}" alt="">
-                    <div class="fruit-text">
-                        <div class="fruit-name">{{ f.thai }}</div>
-                        <div class="fruit-state">
-                            {# สดแต่มั่นใจไม่ถึงระดับสูง ให้คนดูอีกที (ลูกสดที่ทายผิดคือลูกที่หลุดไปถึงลูกค้า) #}
-                            {# ถ้าทุกลูกเป็นแบบนี้ ป้ายตรวจบอกไว้แล้ว ไม่ต้องเขียนซ้ำทุกแถว #}
-                            {% if f.check and all_check %}<span class="fruit-state-good">สด</span>
-                            {% elif f.check %}<span class="fruit-state-good">สด</span> <span class="flag-check">ควรดูอีกที</span>
-                            {% elif f.state == "good" %}<span class="fruit-state-good">สด</span>
-                            {% elif f.state == "bad" %}<span class="fruit-state-bad">เน่า · คัดออก</span>
-                            {% else %}<span class="fruit-state-unsure">ตรวจซ้ำ</span>{% endif %}
-                            {# ลูกที่ขึ้น "ควรดูอีกที" ไม่ต้องบอกระดับซ้ำ (ไม่งั้นจะเป็น "ควรดูอีกที" คู่กับ "มั่นใจพอใช้") #}
-                            <span class="fruit-conf">· ความมั่นใจ {{ f.conf }}%{% if not f.check %} ({{ f.level }}){% endif %}</span>
-                        </div>
-                        {# เหตุผลโชว์เฉพาะลูกที่ต้องตรวจซ้ำ (ลูกอื่นสถานะกับ % บอกครบแล้ว) #}
-                        {% if f.reason %}<div class="fruit-why">{{ f.reason }}</div>{% endif %}
-                        {% if f.notes %}<div class="fruit-notes">อาจทำให้ AI มั่นใจน้อยลง: {{ f.notes|join(" · ") }}</div>{% endif %}
-                    </div>
-                </li>
-                {% endfor %}
+                {% for f in (urgent if fold else fruits) %}{{ fruit_row(f, all_check) }}{% endfor %}
             </ol>
+            {% if fold %}
+            <details class="fresh-fold">
+                <summary>ดูลูกสดอีก {{ fresh|length }} ลูก</summary>
+                <ol class="fruit-list">
+                    {% for f in fresh %}{{ fruit_row(f, all_check) }}{% endfor %}
+                </ol>
+            </details>
+            {% endif %}
             {% if more > 0 %}<div class="tag-others">และอีก {{ more }} ลูก (ดูกรอบในรูป)</div>{% endif %}
         </div>
         {% endif %}
@@ -271,7 +287,15 @@
         <!-- รูปที่ตีกรอบแล้ว -->
         <div class="card r-photo">
             <h3 class="card-title">กรอบสแกน</h3>
-            {% if summary.total > 0 %}<div class="card-sub">กรอบเขียว เลขพื้นขาว = สด (เส้นประ = สดแต่ควรดูอีกที) · กรอบอิฐ เลขพื้นทึบ = เน่า · กรอบเทา = ตรวจซ้ำ</div>{% else %}<div class="card-sub">รูปที่ใส่เข้ามา</div>{% endif %}
+            {% if summary.total > 0 %}
+            {# อธิบายสีกรอบเฉพาะแบบที่มีในรูปนี้ #}
+            {% set legend = [] %}
+            {% if summary.good > summary.check_nums|length %}{% set _ = legend.append("กรอบเขียว เลขพื้นขาว = สด") %}{% endif %}
+            {% if summary.check_nums %}{% set _ = legend.append("กรอบเขียวเส้นประ = สดแต่ควรดูอีกที") %}{% endif %}
+            {% if summary.bad > 0 %}{% set _ = legend.append("กรอบอิฐ เลขพื้นทึบ = เน่า") %}{% endif %}
+            {% if summary.unsure > 0 %}{% set _ = legend.append("กรอบเทา = ตรวจซ้ำ") %}{% endif %}
+            <div class="card-sub">{{ legend|join(" · ") }}</div>
+            {% else %}<div class="card-sub">รูปที่ใส่เข้ามา</div>{% endif %}
             <div class="frame has-img has-result">
                 <img class="frame-photo" src="{{ photo }}" alt="รูปผลไม้ที่ใส่เข้ามา พร้อมกรอบและเลขที่ AI ตีไว้">
                 {{ corners() }}

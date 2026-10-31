@@ -214,6 +214,8 @@ function camToFrame() {
     if (window.matchMedia("(min-width: 701px)").matches) {
         stage.insertBefore(camStage, stage.firstChild);
         stage.classList.add("has-cam");
+        // แถบนับลูกตอนสแกนสด ย้ายไปไว้ใต้ภาพกล้องด้วย จะได้อ่านคู่กับกรอบบนภาพ
+        stage.parentNode.insertBefore(liveInfo, stage.nextSibling);
         stageSub.textContent = "ภาพจากกล้อง · กดถ่าย หรือสแกนสด ทางซ้าย";
     } else {
         // มือถือ : ภาพกล้องอยู่ด้านบนแล้ว ซ่อนการ์ดกรอบสแกนทั้งใบ ไม่ต้องเลื่อนผ่านการ์ดว่าง
@@ -228,6 +230,7 @@ function camBack() {
     }
     if (stage.classList.contains("has-cam")) {
         cam.insertBefore(camStage, cam.firstChild);
+        cam.insertBefore(liveInfo, camStage.nextSibling);
     }
     stage.classList.remove("has-cam");
     stage.parentNode.classList.remove("cam-up");
@@ -539,7 +542,7 @@ function showLiveInfo(result) {
         if (result.good > 0) {
             text = text + " · สด " + result.good;
             if (result.check > 0 && result.check == result.good) {
-                text = text + " (ควรดูอีกทีทุกลูก)";
+                text = text + " (ควรดูอีกที ทุกลูก)";
             } else if (result.check > 0) {
                 text = text + " (ควรดูอีกที " + result.check + ")";
             }

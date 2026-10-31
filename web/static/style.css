@@ -379,6 +379,8 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 .stamp-unsure {color: var(--muted); border-color: var(--muted); border-style: dashed;}
 /* ตราปั๊ม "ควรดูอีกที" (สดทั้งหมด แต่บางลูกมั่นใจไม่สูง) เขียวเส้นประ เล็กกว่า เบากว่า "ตรวจซ้ำ" */
 .stamp-check {color: var(--olive); border-color: var(--olive); border-style: dashed; font-size: 20px;}
+/* บรรทัดเล็กในตรา "สด N ลูก" ตอนลูกสดทุกลูกควรดูอีกที (คนอ่านตราก่อน คำเตือนเลยต้องอยู่ในตรา) */
+.stamp-note {display: block; font-size: 15px; font-weight: 500; text-align: center;}
 /* คำที่ไม่ควรถูกตัดกลางคำตอนขึ้นบรรทัดใหม่ */
 .nowrap {white-space: nowrap;}
 /* เตือนตอนความมั่นใจต่ำ */
@@ -442,6 +444,7 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
     .step-error .tick-box img {width: 14px; height: 14px;}
     /* ข้อความตอนกำลังทำ ให้อยู่บรรทัดเดียว แถบขั้นตอนจะได้ไม่สูงขึ้นแล้วหน้ากระตุก */
     .mark-wait {font-size: 14px; gap: 6px; white-space: nowrap;}
+    .mark-text {white-space: nowrap;}
     .mark-wait .spin {width: 16px; height: 16px;}
     .frame {--frame-h: 280px;}
     /* ปุ่มกล้อง 3 ปุ่มให้อยู่แถวเดียว */
@@ -477,6 +480,11 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 .fruit-list {list-style: none; padding: 0; margin: 16px 0 0 0;}
 .fruit-item {display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1.5px dashed var(--ink);}
 .fruit-item:last-child {border-bottom: none;}
+/* ลูกสดที่พับไว้ (มีหลายลูก) กดเปิดดูได้ */
+.fresh-fold {margin-top: 6px; border-top: 1.5px dashed var(--ink);}
+.fresh-fold > summary {display: flex; align-items: center; min-height: 44px; padding-top: 6px; color: var(--olive); font-weight: 600; cursor: pointer;}
+.fresh-fold > summary:focus-visible {outline: 2px solid var(--olive); outline-offset: 2px; border-radius: 6px;}
+.fresh-fold .fruit-list {margin-top: 4px;}
 .fruit-num {flex: none; width: 32px; height: 32px; border-radius: 50%; color: var(--paper); font-weight: 600; display: flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums;}
 .fruit-thumb {flex: none; width: 56px; height: 56px; border-radius: 8px; border: 1.5px solid var(--ink); object-fit: cover;}
 .fruit-text {min-width: 0;}
@@ -511,3 +519,9 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 .section-title, .card-title, .tag-title, .step-title, .section-sub .caption {text-wrap: balance;}
 /* ข้อความรอง: ไม่ให้บรรทัดสุดท้ายเหลือคำเดียว */
 .card-sub, .known, .chip-note, .tag-others, .tag-warn, .frame-msg, .why-list li {text-wrap: pretty;}
+
+/* จอแคบมาก (320) : ขั้นตอน 3 ช่องเหลือที่น้อย ลดตัวหนังสือนิดนึง คำจะได้ไม่ล้นช่อง */
+@media (max-width: 360px) {
+    .step {padding: 12px 8px;}
+    .mark {font-size: 13px;}
+}
