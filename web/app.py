@@ -138,8 +138,11 @@ def detect(img):
             state = "good"
         else:
             state = "bad"
+        # check = ลูกที่ AI ว่าสด แต่มั่นใจไม่ถึงระดับสูง ควรให้คนดูอีกที
+        # (ลูกเน่าถูกคัดออกอยู่แล้ว ลูกที่อันตรายคือลูกที่บอกว่าสดแต่จริงๆ เน่า แล้วหลุดไปถึงลูกค้า)
+        check = state == "good" and conf < HIGH_CONF
         fruits.append({"fruit": fruit, "thai": THAI_NAMES.get(fruit, fruit), "quality": quality,
-                       "conf": round(conf), "box": box, "state": state})   # % ปัดเป็นเลขกลม อ่านง่าย
+                       "conf": round(conf), "box": box, "state": state, "check": check})   # % ปัดเป็นเลขกลม อ่านง่าย
 
     # ให้เลขเรียงแบบอ่านหนังสือ : แถวบนก่อน ในแถวเดียวกันซ้ายไปขวา
     # ลูกที่จุดกลางสูงต่างจากลูกแรกของแถวไม่ถึงครึ่งความสูงของลูกนั้น ถือว่าอยู่แถวเดียวกัน
@@ -203,7 +206,12 @@ def draw_boxes(img, fruits):
     for f in order:
         x1, y1, x2, y2 = f["box"]
         draw.rectangle([x1 - ring, y1 - ring, x2 + ring, y2 + ring], outline=COLOR_PAPER, width=ring)
-        draw.rectangle([x1, y1, x2, y2], outline=box_color(f), width=line)
+        if f["check"]:
+            # สดแต่ควรดูอีกที : พื้นเส้นครีม แล้วทับด้วยเส้นประสีเขียว
+            draw.rectangle([x1, y1, x2, y2], outline=COLOR_PAPER, width=line)
+            dashed_rect(draw, [x1, y1, x2, y2], box_color(f), line)
+        else:
+            draw.rectangle([x1, y1, x2, y2], outline=box_color(f), width=line)
 
     # รอบที่ 2 : วาดป้ายเลขทีหลังกรอบทั้งหมด เลขจะไม่โดนเส้นกรอบของลูกอื่นทับ
     # ลูกสด = ป้ายพื้นครีม เลขสีเขียว / เน่า และตรวจซ้ำ = ป้ายพื้นทึบ เลขสีครีม
@@ -222,6 +230,25 @@ def draw_boxes(img, fruits):
             text_color = COLOR_PAPER
         draw.text((x1 + font_size * 0.3, y1 + font_size * 0.1), label, fill=text_color, font=font)
     return out
+
+
+# วาดกรอบเส้นประ (PIL ไม่มีเส้นประให้ใช้ เลยวาดเส้นสั้นๆ ต่อกันเองทีละด้าน)
+def dashed_rect(draw, box, color, width):
+    x1, y1, x2, y2 = box
+    dash = width * 3      # ความยาวเส้นแต่ละท่อน
+    gap = width * 2       # ช่องว่างระหว่างท่อน
+    x = x1
+    while x < x2:
+        end = min(x + dash, x2)
+        draw.line([x, y1, end, y1], fill=color, width=width)   # ด้านบน
+        draw.line([x, y2, end, y2], fill=color, width=width)   # ด้านล่าง
+        x = x + dash + gap
+    y = y1
+    while y < y2:
+        end = min(y + dash, y2)
+        draw.line([x1, y, x1, end], fill=color, width=width)   # ด้านซ้าย
+        draw.line([x2, y, x2, end], fill=color, width=width)   # ด้านขวา
+        y = y + dash + gap
 
 
 # พื้นที่ที่กรอบ 2 กรอบทับกัน
@@ -281,9 +308,7 @@ def add_details(img, fruits):
         f["notes"] = notes
 
 
-# นับว่า สด / เน่า / ตรวจซ้ำ อย่างละกี่ลูก + จดเลขลูกที่ต้องคัดออก / ต้องดูซ้ำ
-# check_nums = ลูกที่ AI ว่าสด แต่มั่นใจไม่ถึงระดับสูง ควรให้คนดูอีกที
-# (ลูกเน่าถูกคัดออกอยู่แล้ว ลูกที่อันตรายคือลูกที่บอกว่าสดแต่จริงๆ เน่า แล้วหลุดไปถึงลูกค้า)
+# นับว่า สด / เน่า / ตรวจซ้ำ อย่างละกี่ลูก + จดเลขลูกที่ต้องคัดออก / ต้องดูซ้ำ / สดแต่ควรดูอีกที
 def count_states(fruits):
     summary = {"total": len(fruits), "good": 0, "bad": 0, "unsure": 0,
                "bad_nums": [], "unsure_nums": [], "check_nums": []}
@@ -293,7 +318,7 @@ def count_states(fruits):
             summary["bad_nums"].append("#" + str(f["num"]))
         if f["state"] == "unsure":
             summary["unsure_nums"].append("#" + str(f["num"]))
-        if f["state"] == "good" and f["conf"] < HIGH_CONF:
+        if f["check"]:
             summary["check_nums"].append("#" + str(f["num"]))
     return summary
 
@@ -305,7 +330,7 @@ def list_order(f):
         return 0
     if f["state"] == "unsure":
         return 1
-    if f["conf"] < HIGH_CONF:
+    if f["check"]:
         return 2
     return 3
 
@@ -380,10 +405,11 @@ def live():
     boxes = []
     for f in fruits:
         boxes.append({"x1": f["box"][0] / w, "y1": f["box"][1] / h, "x2": f["box"][2] / w, "y2": f["box"][3] / h,
-                      "thai": f["thai"], "state": f["state"], "conf": f["conf"]})
+                      "thai": f["thai"], "state": f["state"], "conf": f["conf"], "check": f["check"]})
     summary = count_states(fruits)
     return jsonify({"ok": True, "boxes": boxes, "total": summary["total"],
-                    "good": summary["good"], "bad": summary["bad"], "unsure": summary["unsure"]})
+                    "good": summary["good"], "bad": summary["bad"], "unsure": summary["unsure"],
+                    "check": len(summary["check_nums"])})
 
 
 # ไฟล์ใหญ่เกิน MAX_MB

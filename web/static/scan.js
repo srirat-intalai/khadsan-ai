@@ -102,14 +102,23 @@ form.addEventListener("submit", function (event) {
     }
     if (steps.length == 3) {
         steps[1].classList.add("now");
-        // หน้าเริ่มต้น ขั้นที่ 1 ยังว่างอยู่ ติ๊กให้ว่าส่งรูปแล้ว (ใส่ sent ไว้ จะได้รู้ว่า JS ติ๊กเอง)
-        if (steps[0].className == "step") {
-            steps[0].classList.add("step-done", "sent");
+        // หน้าเริ่มต้น / หน้ารูปใช้ไม่ได้ : ขั้นที่ 1 เปลี่ยนเป็นติ๊ก "ส่งแล้ว"
+        // จำของเดิมไว้ก่อน (ใส่ sent ไว้ จะได้รู้ว่า JS เปลี่ยนเอง) กด Back กลับมาจะคืนให้
+        if (!steps[0].classList.contains("step-done")) {
+            oldStepClass = steps[0].className;
+            oldStepText = steps[0].querySelector(".mark-text").textContent;
+            steps[0].className = "step step-done sent";
             steps[0].querySelector(".mark-text").textContent = "ส่งแล้ว";
         }
     }
+    // ข้อความ "กดตรวจได้เลย" ในกรอบสแกน กดไปแล้ว เปลี่ยนเป็นกำลังตรวจ
+    if (stageSub) {
+        stageSub.textContent = "รูปที่เลือก · AI กำลังตรวจ…";
+    }
     live.textContent = "ส่งรูปแล้ว AI กำลังตรวจ รอสักครู่";
 });
+var oldStepClass = "";
+var oldStepText = "";
 
 
 // กดปุ่ม Back กลับมาหน้านี้ เบราว์เซอร์บางตัวจำหน้าเดิมไว้ทั้งหน้า ปุ่มจะค้างเป็น "กำลังตรวจ" เลยคืนค่าให้
@@ -120,10 +129,13 @@ window.addEventListener("pageshow", function () {
     for (var i = 0; i < steps.length; i++) {
         steps[i].classList.remove("now");
     }
-    // ติ๊ก "ส่งแล้ว" ที่ JS ใส่ไว้ตอนกดตรวจ เอาออกด้วย
+    // ติ๊ก "ส่งแล้ว" ที่ JS ใส่ไว้ตอนกดตรวจ คืนเป็นแบบเดิม
     if (steps.length == 3 && steps[0].classList.contains("sent")) {
-        steps[0].classList.remove("step-done", "sent");
-        steps[0].querySelector(".mark-text").textContent = "";
+        steps[0].className = oldStepClass;
+        steps[0].querySelector(".mark-text").textContent = oldStepText;
+    }
+    if (stageSub && preview && !preview.hidden) {
+        stageSub.textContent = "รูปที่เลือก · กดตรวจได้เลย";
     }
 });
 
@@ -355,6 +367,7 @@ function startLive() {
     liveBtn.textContent = "หยุดสแกน";
     liveBtn.setAttribute("aria-pressed", "true");
     liveInfo.textContent = "กำลังเริ่มสแกน…";
+    liveInfo.classList.remove("live-bad");
     liveInfo.hidden = false;
     sendFrame();
 }
@@ -441,7 +454,12 @@ function drawLiveBoxes(boxes) {
         ctx.strokeRect(x, y, bw, bh);
         ctx.lineWidth = 3;
         ctx.strokeStyle = liveColors[b.state];
+        // สดแต่ควรดูอีกที : กรอบเส้นประ (แบบเดียวกับรูปผลตรวจ)
+        if (b.check) {
+            ctx.setLineDash([10, 6]);
+        }
         ctx.strokeRect(x, y, bw, bh);
+        ctx.setLineDash([]);
     }
 
     // รอบที่ 2 : วาดป้ายชื่อทีหลัง ป้ายจะไม่โดนเส้นกรอบของลูกอื่นทับ เช่น "ส้ม เน่า 91%"
@@ -504,9 +522,19 @@ function showLiveInfo(result) {
     } else if (result.total == 0) {
         text = "ยังไม่เห็นผลไม้ เล็งให้เห็นทั้งลูก แสงพอ";
     } else {
-        text = "เห็น " + result.total + " ลูก · สด " + result.good + " · เน่า " + result.bad + " · ตรวจซ้ำ " + result.unsure;
+        text = "เห็น " + result.total + " ลูก · สด " + result.good;
+        if (result.check > 0) {
+            text = text + " (ควรดูอีกที " + result.check + ")";
+        }
+        text = text + " · เน่า " + result.bad + " · ตรวจซ้ำ " + result.unsure;
     }
     if (liveInfo.textContent != text) {
         liveInfo.textContent = text;
+    }
+    // เจอลูกเน่า แถบสรุปเป็นสีอิฐ ไม่ใช่สีเขียว
+    if (result.ok && result.bad > 0) {
+        liveInfo.classList.add("live-bad");
+    } else {
+        liveInfo.classList.remove("live-bad");
     }
 }
