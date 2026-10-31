@@ -428,5 +428,5 @@ if __name__ == "__main__":
             pass
 
     # threaded=False : ตรวจทีละรูป มีคนส่งรูปพร้อมกัน 2 คน คนที่ 2 จะรอคิว โมเดลจะไม่ชนกัน
-    # Hugging Face Spaces ใช้ port 7860
+    # เปิดเว็บที่ port 7860 (เปลี่ยนได้ด้วยตัวแปร PORT)
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 7860)), debug=False, threaded=False)
