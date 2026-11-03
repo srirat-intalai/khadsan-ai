@@ -1,0 +1,5 @@
+class,precision,recall,f1,mAP50
+Lime_Bad,0.9505,0.8563,0.9009,0.9626
+Lime_Good,0.5698,0.9544,0.7136,0.8867
+Pomegranate_Bad,0.8778,0.6159,0.7239,0.8228
+Pomegranate_Good,0.7025,0.9099,0.7929,0.8143

@@ -1,0 +1,2 @@
+class,precision,recall,f1,mAP50
+Pomegranate_Good,0.5893,0.4258,0.4944,0.2734

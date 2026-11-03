@@ -1,0 +1,7 @@
+actual \ predicted,Apple_Bad,Apple_Good,Banana_Bad,Banana_Good,Lime_Bad,Lime_Good,Orange_Bad,Orange_Good,Pomegranate_Bad,Pomegranate_Good,not_found
+Apple_Bad,97,1,0,0,0,0,1,0,0,0,1
+Apple_Good,1,97,0,0,0,0,0,1,0,0,1
+Banana_Bad,0,0,99,0,0,0,0,0,0,0,1
+Banana_Good,0,0,0,98,0,0,1,1,0,0,0
+Orange_Bad,0,0,0,0,2,0,98,0,0,0,0
+Orange_Good,0,0,0,0,0,0,0,100,0,0,0

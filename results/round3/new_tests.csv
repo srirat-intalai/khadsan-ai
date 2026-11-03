@@ -1,0 +1,11 @@
+model,test_set,images,precision,recall,f1,mAP50,rotten_called_fresh
+8_cosine_more_data,new_test,150,0.6923,0.5806,0.6316,0.4125,0
+8_cosine_more_data,same_source_test,370,0.7854,0.8205,0.8026,0.8632,218
+5_cosine_lr,new_test,150,0.5117,0.7032,0.5924,0.4225,0
+5_cosine_lr,same_source_test,370,0.7246,0.7702,0.7467,0.8186,210
+10_new_data,new_test,150,0.5231,0.4387,0.4772,0.2494,0
+10_new_data,same_source_test,370,0.7566,0.788,0.772,0.8543,191
+11_new_data_seed2,new_test,150,0.531,0.3871,0.4478,0.2361,0
+11_new_data_seed2,same_source_test,370,0.7752,0.8341,0.8036,0.8716,210
+12_new_data_seed3,new_test,150,0.5893,0.4258,0.4944,0.2734,0
+12_new_data_seed3,same_source_test,370,0.7218,0.8397,0.7763,0.8375,163

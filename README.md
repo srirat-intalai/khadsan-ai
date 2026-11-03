@@ -133,7 +133,41 @@
 
 ฝั่งเว็บใช้ความมั่นใจขั้นต่ำ 0.40 (เดิม 0.25) วัดบน test กับโมเดล 8 แล้ว เจอผลไม้น้อยลงแค่ 4 จาก 1,055 ลูก แต่ตัดกรอบมั่วๆ ที่มั่นใจต่ำออกได้
 
-**ไฟล์ผลการทดลองอยู่ใน `results/` (รอบ 1) กับ `results/round2/` (รอบ 2)** หยิบไปใส่รายงานกับสไลด์ได้เลย
+**รอบ 3 : ผลเชื่อได้แค่ไหน (เพิ่มส้มเน่า + เทรนซ้ำ 3 seed + ข้อสอบใหม่)**
+
+รอบ 2 ยังตอบไม่ได้ 3 เรื่อง คือ ส้มเน่าแย่ลง / เทรนแบบละครั้งเดียว ไม่รู้ว่าคะแนนแกว่งแค่ไหน / ชุดแหล่งอื่นมาจากที่เดียวกับรูปที่เพิ่มเทรน และไม่มีมะนาว ทับทิม
+
+สิ่งที่ทำ
+- เพิ่มส้มเน่า 174 รูปจาก Roboflow `rotten-orange` เข้าชุดเทรน (ตัดรูปที่คล้าย val / test / ชุดทดสอบภายนอกออกแล้ว)
+- เทรนค่าเดียวกับ 8 สามครั้ง ด้วย seed 42 / 2 / 3 (การทดลอง 10, 11, 12) รอบ 1-2 ล็อก seed 42 ไว้ เลยไม่เคยรู้ว่าผลแกว่งแค่ไหน
+- ข้อสอบใหม่ที่มีกรอบทุกลูก ไม่เคยใช้เทรน
+  - `new_test` (ข้อสอบอิสระ) : ทับทิมสด 150 รูป จาก Roboflow `quality-detection`
+  - `same_source_test` (ดูประกอบ **ไม่ใช่ข้อสอบอิสระ**) : มะนาวสด/เน่า 298 รูป (`lime-quality`) + ทับทิมสด/เน่า 72 รูป (`pomegranate-aws5r`)
+    ตอนตรวจเจอว่า 2 ชุดนี้มาจากชุดถ่ายเดียวกับ Fruits Quality (มีรูปเดียวกันเป๊ะ แค่เปลี่ยนชื่อไฟล์) ตัดรูปซ้ำออกแล้วแต่ยังนับเป็นแหล่งเดียวกัน
+- ให้โมเดลเก่า 5 กับ 8 สอบข้อสอบใหม่ด้วย จะได้เทียบกันตรงๆ
+
+| การทดลอง | seed | Val mAP50 | Test F1 | Test mAP50 | รูปแหล่งอื่น (Kaggle) | F1 new_test | F1 same_source_test |
+|---|---|---|---|---|---|---|---|
+| 5_cosine_lr (รอบ 1) | 42 | 0.975 | 0.953 | 0.970 | 60.0% | 0.592 | 0.747 |
+| 8_cosine_more_data (รอบ 2, ใช้ในเว็บ) | 42 | 0.973 | 0.944 | 0.969 | 97.7% | 0.632 | 0.803 |
+| 10_new_data | 42 | 0.971 | 0.948 | 0.969 | 97.3% | 0.477 | 0.772 |
+| 11_new_data_seed2 | 2 | 0.975 | 0.947 | 0.970 | 98.2% | 0.448 | 0.804 |
+| 12_new_data_seed3 | 3 | 0.973 | 0.953 | 0.971 | 98.2% | 0.494 | 0.776 |
+| **10-12 เฉลี่ย ± ครึ่งช่วง** | | 0.973 ± 0.002 | **0.949 ± 0.003** | 0.970 ± 0.001 | 97.9% | 0.473 ± 0.023 | 0.784 ± 0.016 |
+
+สรุปผลรอบ 3
+- **ผลนิ่ง** : 3 seed ได้ Test F1 ต่างกันไม่เกิน ±0.003 ความต่างที่เล็กกว่านี้ (เช่น 8 กับ 10-12) ถือว่าเท่ากัน
+- **ส้มเน่าดีขึ้นตามเป้า** : F1 บน test จาก 0.859 (8) เป็น 0.920 (11) รูปแหล่งอื่นส้มเน่าทายถูก 95% เป็น 98%
+  แต่กล้วยเน่าลดจาก 0.972 เป็น 0.937 และส้มสดจาก 0.950 เป็น 0.925
+- **ข้อจำกัดใหญ่ : ทับทิมจากแหล่งอื่น โมเดลทายว่าเป็นแอปเปิล** ลองที่ความมั่นใจ 0.40 เท่าเว็บ ทับทิมสด 150 รูป
+  แบบ 8 ทายเป็นแอปเปิล 130 รูป ถูกแค่ 9 รูป / แบบ 11 ทายเป็นแอปเปิล 135 รูป ถูก 10 รูป
+  F1 new_test ที่ต่างกัน (0.63 กับ 0.45-0.49) จึงไม่ได้แปลว่าตัวใหม่แย่ลง ทุกตัวพังพอกัน
+  แปลว่าโมเดลจำทับทิมได้แค่แบบที่เคยเห็นในชุดเทรน ต้องเพิ่มรูปทับทิมจากแหล่งอื่นถึงจะแก้ได้
+- ข้อสอบ same_source_test ลูกเน่าที่โมเดลบอกว่าสด (นับจาก Confusion Matrix) ยังเยอะทุกตัว : 8 = 218, 10-12 = 191 / 210 / 163 ส่วนใหญ่เป็นมะนาวเน่า
+- ทั้ง 3 seed ไม่ตีกรอบรูปคนกับรูปรถบัส
+- โค้ดเลือก 11 ให้อัตโนมัติ (Val mAP50 สูงสุด) **ตอนนี้เว็บยังใช้ 8 อยู่** (11 ดีกว่าเล็กน้อยตามเกณฑ์ ทีมยังไม่ได้ตัดสินใจเปลี่ยน)
+
+**ไฟล์ผลการทดลองอยู่ใน `results/` (รอบ 1), `results/round2/` (รอบ 2) และ `results/round3/` (รอบ 3)** หยิบไปใส่รายงานกับสไลด์ได้เลย
 - `summary.md` กับ `summary.csv` ตารางรวมทุกการทดลอง มีทั้งค่าที่ตั้งและคะแนน
 - `per_class_best.csv` คะแนนรายคลาสของ 5_cosine_lr / `round2/per_class_8.csv` ของ 8 (ตัวที่ใช้ในเว็บ)
 - `external_5_cosine_lr_*.csv` กับ `round2/external_8_cosine_more_data_*.csv` ผลกับรูปจากแหล่งอื่นรายคลาส (ตัวอื่นดูคอลัมน์ "รูปแหล่งอื่น" ในตาราง)
@@ -141,6 +175,7 @@
 - `compare_*.png` กราฟเทียบแต่ละเรื่อง เช่น optimizer, learning rate, batch, weight decay, scratch vs pretrained และ `compare_all.png` ที่รวมทุกตัว · รอบ 2 มี `round2/compare_more_data.png` (เพิ่มรูป) กับ `round2/compare_rmsprop_lr.png` (แก้ RMSProp)
 - `curves_*.png` กราฟ Loss และคะแนนทีละ epoch ของแต่ละการทดลอง
 - `versions.txt` รุ่น ultralytics กับ torch ที่ใช้เทรน
+- รอบ 3 : `round3/seed_summary.md` (3 seed แกว่งแค่ไหน) / `round3/new_tests.csv` (ข้อสอบใหม่ทุกโมเดล คอลัมน์ `rotten_called_fresh` = ลูกเน่าที่บอกว่าสด) / `round3/per_class_<โมเดล>_<ข้อสอบ>.csv` / `round3/per_class_11.csv` กับ `round3/confusion_matrix_11.png` / `round3/compare_seeds.png`
 
 
 ## โครงสร้างไฟล์
@@ -151,10 +186,11 @@ docs/
   train-model.md        วิธีเทรนบน Colab และวิธีเทรนเพิ่มเมื่อมีรูปใหม่
 train/
   prepare_data.py       เตรียมข้อมูล (แบ่งชุดเทรน + ชุดทดสอบภายนอก + ตีกรอบรูป Kaggle สำหรับรอบ 2)
-  train_yolo.py         เทรน 9 การทดลอง + วัดผล + กราฟ/ตาราง
-  add_new_data.py       เอารูปชุดใหม่ที่ตีกรอบใน Roboflow มาแปลงเลขคลาสให้ตรงกับโมเดล
+  train_yolo.py         เทรน 12 การทดลอง + วัดผล (test / แหล่งอื่น / ข้อสอบใหม่) + กราฟ/ตาราง
+  add_new_data.py       เอารูปชุดใหม่ที่ตีกรอบแล้ว มาแปลงชื่อคลาส กันรูปซ้ำ ใช้เทรนเพิ่มหรือทำข้อสอบ
   train_round1.ipynb    โน้ตบุ๊ก Colab รอบ 1 : Model Tuning 7 การทดลอง
   train_round2.ipynb    โน้ตบุ๊ก Colab รอบ 2 : เพิ่มข้อมูล + แก้ RMSProp
+  train_round3.ipynb    โน้ตบุ๊ก Colab รอบ 3 : เพิ่มส้มเน่า + 3 seed + ข้อสอบใหม่
   datasets/             ที่วางข้อมูล (ไฟล์ใหญ่ ไม่ขึ้น GitHub)
 web/
   app.py                หน้าเว็บ Flask + เรียกโมเดล + วาดกรอบ
@@ -248,6 +284,11 @@ python app.py
 - Fruit and Vegetable Disease (Healthy vs Rotten) โดย `muhammad0subhan` บน Kaggle
   https://www.kaggle.com/datasets/muhammad0subhan/fruit-and-vegetable-disease-healthy-vs-rotten : ดูเงื่อนไขการใช้งานในหน้า Kaggle
 - COCO128 (รูปตัวอย่าง 128 รูปจาก COCO 2017 ของ Ultralytics) ใช้เป็นรูปพื้นหลังที่ไม่มีผลไม้ : https://cocodataset.org (ใช้ภาพตามเงื่อนไข COCO Terms of Use)
+- รอบ 3 จาก Roboflow Universe ทั้งหมดสัญญาอนุญาต **CC BY 4.0**
+  - rotten-orange (version 5) โดย `trns-workspace-wydhc` : https://universe.roboflow.com/trns-workspace-wydhc/rotten-orange-dvh3t (รูปเทรนเพิ่ม)
+  - quality-detection (version 1) โดย `sliit-b09eh` : https://universe.roboflow.com/sliit-b09eh/quality-detection-yy0x3 (ข้อสอบ new_test)
+  - lime-quality (version 1) โดย `yasmines-workspace-whz7y` : https://universe.roboflow.com/yasmines-workspace-whz7y/lime-quality (ข้อสอบ same_source_test)
+  - pomegranate-aws5r (version 1) โดย `curry` : https://universe.roboflow.com/curry/pomegranate-aws5r (ข้อสอบ same_source_test)
 
 **ซอฟต์แวร์**
 - [Ultralytics YOLOv8](https://github.com/ultralytics/ultralytics) ใช้สัญญาอนุญาต **AGPL-3.0**

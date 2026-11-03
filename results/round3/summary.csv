@@ -1,0 +1,4 @@
+name,start_from,optimizer,lr0,lr_schedule,batch,weight_decay,epochs_run,val_mAP50,test_precision,test_recall,test_f1,test_mAP50,test_mAP50_95,minutes
+10_new_data,pretrained,SGD,0.01,cosine,16,0.0005,60,0.9711,0.9409,0.9548,0.9478,0.9691,0.6416,67.6
+11_new_data_seed2,pretrained,SGD,0.01,cosine,16,0.0005,60,0.9746,0.9499,0.9445,0.9472,0.97,0.6372,68.2
+12_new_data_seed3,pretrained,SGD,0.01,cosine,16,0.0005,60,0.9734,0.948,0.9574,0.9527,0.9709,0.6423,68.0
