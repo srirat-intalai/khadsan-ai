@@ -15,6 +15,10 @@
 # วิธีรัน:  python train_yolo.py --data datasets/data_5fruits/data.yaml --out โฟลเดอร์เก็บผล
 # ทดสอบกับรูปจากแหล่งอื่นด้วย:  เติม --external datasets/external_test
 # รอบ 2 (เพิ่มรูป Kaggle + แก้ RMSProp) :  เติม --more-data datasets/data_5fruits/data_more.yaml --only 5_cosine_lr,8_cosine_more_data,4_rmsprop,9_rmsprop_low_lr
+# รอบ 3 (เพิ่มส้มเน่า + เทรนซ้ำ 3 seed + ข้อสอบใหม่) :
+#   เติม --more-data ...data_more.yaml --only 10_new_data,11_new_data_seed2,12_new_data_seed3
+#        --new-test datasets/new_test --same-source-test datasets/same_source_test
+#        --compare "5_cosine_lr=ที่อยู่best.pt,8_cosine_more_data=ที่อยู่best.pt"   (โมเดลเก่าที่อยากสอบข้อสอบใหม่ด้วย ไม่ต้องเทรนใหม่)
 # ทดสอบโค้ดเร็วๆ (รูปน้อย 1 epoch):  เติม --quick
 
 import os
@@ -44,6 +48,9 @@ SEED = 42
 EXTERNAL_DIR = ""       # ชุดทดสอบภายนอก (prepare_data.py ส่วนที่ 2 ทำไว้) ไม่ใส่ = ข้าม
 MORE_DATA = ""          # รอบ 2 : data_more.yaml (ชุดเทรนเดิม + รูป Kaggle) ไม่ใส่ = ข้ามการทดลองที่ 8
 ONLY = []               # รันแค่การทดลองที่ระบุ เช่น --only 5_cosine_lr,8_cosine_more_data (ไม่ใส่ = รันทั้งหมด)
+NEW_TEST_DIR = ""       # รอบ 3 : ข้อสอบใหม่ที่มีกรอบ จากแหล่งที่ไม่ได้ใช้เทรนเลย (images/ + labels/)
+SAME_SOURCE_DIR = ""    # รอบ 3 : ข้อสอบที่มาจากชุดถ่ายเดียวกับชุดเทรน แต่คนละรูป (ดูประกอบ ไม่ใช่ข้อสอบอิสระ)
+COMPARE = {}            # รอบ 3 : โมเดลเก่าที่อยากสอบข้อสอบใหม่ด้วย ชื่อ -> ที่อยู่ไฟล์ best.pt
 
 QUICK_TEST = False
 for i in range(len(sys.argv)):
@@ -57,6 +64,14 @@ for i in range(len(sys.argv)):
         MORE_DATA = sys.argv[i + 1]
     if sys.argv[i] == "--only":
         ONLY = sys.argv[i + 1].split(",")
+    if sys.argv[i] == "--new-test":
+        NEW_TEST_DIR = sys.argv[i + 1]
+    if sys.argv[i] == "--same-source-test":
+        SAME_SOURCE_DIR = sys.argv[i + 1]
+    if sys.argv[i] == "--compare":
+        for pair in sys.argv[i + 1].split(","):
+            name, path = pair.split("=")
+            COMPARE[name.strip()] = path.strip()
     if sys.argv[i] == "--quick":
         QUICK_TEST = True
 
@@ -94,7 +109,13 @@ EXPERIMENTS = [
     {"name": "8_cosine_more_data", "model": "yolov8n.pt", "optimizer": "SGD", "lr0": 0.01, "cos_lr": True, "lrf": 0.01, "batch": 16, "weight_decay": 0.0005, "more_data": True},
     # รอบ 2 : รอบแรก RMSProp (lr 0.001) loss พุ่งไปหลักหมื่นแล้วคะแนนแกว่งตลอด ลองลด lr ลง 10 เท่า ดูว่านิ่งขึ้นไหม
     {"name": "9_rmsprop_low_lr", "model": "yolov8n.pt", "optimizer": "RMSProp", "lr0": 0.0001, "cos_lr": False, "lrf": 1.0, "batch": 16, "weight_decay": 0.0005},
+    # รอบ 3 : ค่าเดียวกับ 8 แต่ชุดเทรนเพิ่มส้มเน่า (rotten_orange) แล้วเทรนซ้ำ 3 ครั้งด้วย seed ต่างกัน
+    # รอบ 1-2 ล็อก seed 42 ไว้ รันซ้ำก็ได้เลขเดิม เลยไม่รู้ว่าคะแนนแกว่งได้แค่ไหน 3 seed นี้จะบอกว่าผลนิ่งจริงไหม
+    {"name": "10_new_data", "model": "yolov8n.pt", "optimizer": "SGD", "lr0": 0.01, "cos_lr": True, "lrf": 0.01, "batch": 16, "weight_decay": 0.0005, "more_data": True, "seed": 42},
+    {"name": "11_new_data_seed2", "model": "yolov8n.pt", "optimizer": "SGD", "lr0": 0.01, "cos_lr": True, "lrf": 0.01, "batch": 16, "weight_decay": 0.0005, "more_data": True, "seed": 2},
+    {"name": "12_new_data_seed3", "model": "yolov8n.pt", "optimizer": "SGD", "lr0": 0.01, "cos_lr": True, "lrf": 0.01, "batch": 16, "weight_decay": 0.0005, "more_data": True, "seed": 3},
 ]
+SEED_RUNS = ["10_new_data", "11_new_data_seed2", "12_new_data_seed3"]
 
 
 # ===== อ่านชื่อคลาสจาก data.yaml =====
@@ -230,7 +251,7 @@ def run_experiment(exp):
         cos_lr=exp["cos_lr"],
         weight_decay=exp["weight_decay"],
         patience=PATIENCE,
-        seed=SEED,
+        seed=exp.get("seed", SEED),   # รอบ 3 แต่ละการทดลองตั้ง seed เองได้ ไม่ตั้ง = 42 เหมือนรอบก่อน
         deterministic=True,
         device=DEVICE,
         workers=2,
@@ -357,6 +378,101 @@ def test_external(model_path, tag):
     print(open(os.path.join(RESULT_DIR, "external_" + tag + "_summary.txt"), encoding="utf-8").read())
 
 
+# ===== รอบ 3 : สอบกับข้อสอบใหม่ที่มีกรอบ =====
+# โฟลเดอร์ข้อสอบมีแค่ images/ กับ labels/ เลยเขียน data.yaml ให้ YOLO อ่านเอง (ใช้ชื่อคลาส 10 ตัวเดิม)
+def make_test_yaml(folder):
+    yaml_file = os.path.join(folder, "data.yaml")
+    names_text = ", ".join("'" + n + "'" for n in CLASS_NAMES)
+    with open(yaml_file, "w", encoding="utf-8") as f:
+        f.write("path: " + os.path.abspath(folder) + "\n")
+        f.write("train: images\nval: images\ntest: images\n")
+        f.write("nc: " + str(len(CLASS_NAMES)) + "\n")
+        f.write("names: [" + names_text + "]\n")
+    return yaml_file
+
+
+NEW_TEST_FILE = os.path.join(RESULT_DIR, "new_tests.csv")
+NEW_TEST_HEAD = ["model", "test_set", "images", "precision", "recall", "f1", "mAP50", "rotten_called_fresh"]
+
+
+def read_new_tests():
+    rows = []
+    if os.path.exists(NEW_TEST_FILE):
+        with open(NEW_TEST_FILE, encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                rows.append(row)
+    return rows
+
+
+# วัดผล 1 โมเดล กับข้อสอบ 1 ชุด ได้ P R F1 mAP50 รวม + รายคลาส + จำนวนลูกเน่าที่โมเดลบอกว่าสด
+def test_detect(model_path, folder, model_name, set_name):
+    yaml_file = make_test_yaml(folder)
+    images = len(os.listdir(os.path.join(folder, "images")))
+    m = YOLO(model_path).val(data=yaml_file, split="test", imgsz=IMG_SIZE, device=DEVICE,
+                             project=os.path.abspath(RUN_DIR), name=model_name + "_" + set_name,
+                             exist_ok=True, verbose=False)
+    p = float(m.box.mp)
+    r = float(m.box.mr)
+
+    # Confusion matrix ของ YOLO : แถว = ที่โมเดลทาย, คอลัมน์ = ของจริง
+    # ลูกเน่าที่โมเดลบอกว่าสด = แถว X_Good คอลัมน์ X_Bad ของผลไม้ชนิดเดียวกัน (อันตรายสุด ของเน่าหลุดไปถึงลูกค้า)
+    matrix = m.confusion_matrix.matrix
+    rotten_fresh = 0
+    for k in range(len(CLASS_NAMES)):
+        if CLASS_NAMES[k].endswith("_Bad"):
+            good = CLASS_NAMES.index(CLASS_NAMES[k].replace("_Bad", "_Good"))
+            rotten_fresh = rotten_fresh + int(matrix[good][k])
+
+    with open(os.path.join(RESULT_DIR, "per_class_" + model_name + "_" + set_name + ".csv"), "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["class", "precision", "recall", "f1", "mAP50"])
+        for i in range(len(m.box.ap_class_index)):
+            k = int(m.box.ap_class_index[i])
+            pk = float(m.box.p[i])
+            rk = float(m.box.r[i])
+            writer.writerow([CLASS_NAMES[k], round(pk, 4), round(rk, 4), round(f1_score(pk, rk), 4), round(float(m.box.ap50[i]), 4)])
+
+    row = {"model": model_name, "test_set": set_name, "images": images,
+           "precision": round(p, 4), "recall": round(r, 4), "f1": round(f1_score(p, r), 4),
+           "mAP50": round(float(m.box.map50), 4), "rotten_called_fresh": rotten_fresh}
+    print(model_name, "|", set_name, "| F1", row["f1"], "mAP50", row["mAP50"], "| ลูกเน่าที่บอกว่าสด", rotten_fresh)
+    return row
+
+
+# ===== รอบ 3 : เทรนซ้ำ 3 seed ผลแกว่งแค่ไหน =====
+def mean_and_spread(values):
+    mean = sum(values) / len(values)
+    spread = (max(values) - min(values)) / 2     # ครึ่งหนึ่งของช่วงต่ำสุด-สูงสุด เขียนเป็น ค่าเฉลี่ย ± ตัวนี้
+    return round(mean, 4), round(spread, 4)
+
+
+def write_seed_summary(summary, new_rows):
+    rows = []
+    for r in summary:
+        if r["name"] in SEED_RUNS:
+            rows.append(r)
+    if len(rows) < 2:
+        return
+    lines = ["| ค่าที่วัด | " + " | ".join(r["name"] for r in rows) + " | ค่าเฉลี่ย ± ครึ่งช่วง |",
+             "|---|" + "---|" * len(rows) + "---|"]
+    for key, label in [("val_mAP50", "Val mAP50"), ("test_f1", "Test F1"), ("test_mAP50", "Test mAP50")]:
+        values = [float(r[key]) for r in rows]
+        mean, spread = mean_and_spread(values)
+        lines.append("| " + label + " | " + " | ".join(str(v) for v in values) + " | " + str(mean) + " ± " + str(spread) + " |")
+    for set_name in ["new_test", "same_source_test"]:
+        values = []
+        for r in rows:
+            for n in new_rows:
+                if n["model"] == r["name"] and n["test_set"] == set_name:
+                    values.append(float(n["f1"]))
+        if len(values) == len(rows):
+            mean, spread = mean_and_spread(values)
+            lines.append("| F1 " + set_name + " | " + " | ".join(str(v) for v in values) + " | " + str(mean) + " ± " + str(spread) + " |")
+    with open(os.path.join(RESULT_DIR, "seed_summary.md"), "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+    print("\n".join(lines))
+
+
 # ===== เริ่มทำงาน =====
 print("ultralytics", ultralytics.__version__, "| torch", torch.__version__, "| device", DEVICE)
 if DEVICE == "cpu":
@@ -410,6 +526,45 @@ if EXTERNAL_DIR != "" and os.path.isdir(EXTERNAL_DIR):
         best_file = os.path.join(RUN_DIR, r["name"], "weights", "best.pt")
         if os.path.exists(best_file) and not os.path.exists(done_file):
             test_external(best_file, r["name"])
+    # โมเดลเก่า (--compare) ก็สอบชุดเดียวกัน จะได้เทียบกันตรงๆ
+    for name in COMPARE:
+        done_file = os.path.join(RESULT_DIR, "external_" + name + "_summary.txt")
+        if os.path.exists(COMPARE[name]) and not os.path.exists(done_file):
+            test_external(COMPARE[name], name)
+
+# รอบ 3 : สอบข้อสอบใหม่ ทั้งโมเดลที่เพิ่งเทรน และโมเดลเก่าที่ใส่ใน --compare (คู่ไหนสอบแล้วข้าม)
+new_rows = read_new_tests()
+test_sets = {}
+if NEW_TEST_DIR != "" and os.path.isdir(NEW_TEST_DIR):
+    test_sets["new_test"] = NEW_TEST_DIR
+if SAME_SOURCE_DIR != "" and os.path.isdir(SAME_SOURCE_DIR):
+    test_sets["same_source_test"] = SAME_SOURCE_DIR
+if len(test_sets) > 0:
+    models = {}
+    for name in COMPARE:
+        if os.path.exists(COMPARE[name]):
+            models[name] = COMPARE[name]
+        else:
+            print("ไม่เจอไฟล์โมเดล", COMPARE[name], "ข้าม", name)
+    for r in summary:
+        best_file = os.path.join(RUN_DIR, r["name"], "weights", "best.pt")
+        if os.path.exists(best_file):
+            models[r["name"]] = best_file
+    for name in models:
+        for set_name in test_sets:
+            done = False
+            for n in new_rows:
+                if n["model"] == name and n["test_set"] == set_name:
+                    done = True
+            if done:
+                continue
+            new_rows.append(test_detect(models[name], test_sets[set_name], name, set_name))
+            with open(NEW_TEST_FILE, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=NEW_TEST_HEAD)
+                writer.writeheader()
+                for n in new_rows:
+                    writer.writerow(n)
+write_seed_summary(summary, new_rows)
 
 # กราฟเปรียบเทียบไว้ใส่รายงาน
 plot_compare(["1_scratch_sgd", "2_pretrained_sgd"], "compare_scratch_vs_pretrained.png", "Scratch vs Pretrained")
@@ -419,6 +574,7 @@ plot_compare(["2_pretrained_sgd", "6_batch32"], "compare_batch16_vs_32.png", "Ba
 plot_compare(["2_pretrained_sgd", "7_no_weight_decay"], "compare_weight_decay.png", "Weight decay (L2) vs none")
 plot_compare(["5_cosine_lr", "8_cosine_more_data"], "compare_more_data.png", "Original data vs + Kaggle images")
 plot_compare(["4_rmsprop", "9_rmsprop_low_lr"], "compare_rmsprop_lr.png", "RMSProp lr 0.001 vs 0.0001")
+plot_compare(SEED_RUNS, "compare_seeds.png", "Same settings, 3 seeds")
 all_names = []
 for e in EXPERIMENTS:
     all_names.append(e["name"])

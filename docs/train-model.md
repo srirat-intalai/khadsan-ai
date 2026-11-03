@@ -10,6 +10,7 @@
 | `add_new_data.py` | เอารูปชุดใหม่ที่ตีกรอบเองมาแปลงเลขคลาสให้ตรงกับโมเดลเรา |
 | `train_round1.ipynb` | โน้ตบุ๊ก Colab รอบ 1 : การทดลอง 1-7 |
 | `train_round2.ipynb` | โน้ตบุ๊ก Colab รอบ 2 : เพิ่มรูปเข้าชุดเทรน (การทดลอง 8) และแก้ RMSProp (การทดลอง 9) |
+| `train_round3.ipynb` | โน้ตบุ๊ก Colab รอบ 3 : เพิ่มส้มเน่า เทรนซ้ำ 3 seed (การทดลอง 10-12) และสอบข้อสอบใหม่ |
 
 
 ## 1. เทรนตามรอบเดิม (รอบ 1 / รอบ 2)
@@ -20,6 +21,7 @@
 |---|---|---|
 | รอบ 1 | `KhadSan_detect` | `ExternalTest.zip` (ไม่บังคับ แต่ถ้าไม่มีจะไม่ได้ผลทดสอบกับรูปจากแหล่งอื่น) |
 | รอบ 2 | `KhadSan_detect_v2` | `ExternalTest.zip` และ `KaggleBoxes.zip` (บังคับทั้งคู่) |
+| รอบ 3 | `KhadSan_detect_v3` | `ExternalTest.zip`, `KaggleBoxes_v3.zip` และ `NewTest.zip` (บังคับทั้ง 3 ไฟล์ ดูข้อ 1.1) |
 
 ชุดรูปหลัก (Fruits Quality) เลือกได้ 1 ทาง
 - ตั้ง Colab Secret ชื่อ `ROBOFLOW_API_KEY` (กดรูปกุญแจทางซ้ายใน Colab) ใส่ API key ของ Roboflow ห้ามพิมพ์ key ลงในโค้ด
@@ -49,6 +51,42 @@
 1. Test F1 ในตาราง (ช่อง "ดูผล")
 2. ผลทดสอบกับรูปจากแหล่งอื่น (external)
 3. รอบ 2 : ข้อ 8 ยังตีกรอบหน้าคนเป็นผลไม้อยู่ไหม
+
+### 1.1 รอบ 3 ใช้ข้อมูลอะไร ทำไฟล์ zip ยังไง
+
+รอบ 3 แก้จุดอ่อนของรอบ 2 : ส้มเน่าคะแนนตก / เทรนแบบละครั้งเดียว / ข้อสอบแหล่งอื่นมาจากที่เดียวกับรูปเทรนและไม่มีมะนาว ทับทิม
+
+| ชุด (Roboflow, CC BY 4.0) | ใช้ทำอะไร | ชื่อคลาสเดิม → ของเรา |
+|---|---|---|
+| `trns-workspace-wydhc/rotten-orange-dvh3t` v5 | รูปเทรนเพิ่ม (ส้มเน่า 174 รูป) | rotten_orange → Orange_Bad, fresh_orange → Orange_Good |
+| `sliit-b09eh/quality-detection-yy0x3` v1 | ข้อสอบใหม่ `new_test` (ทับทิมสด 150 รูป) | good → Pomegranate_Good |
+| `yasmines-workspace-whz7y/lime-quality` v1 | ข้อสอบ `same_source_test` (มะนาว 298 รูป) | lime_bad → Lime_Bad, lime_good → Lime_Good |
+| `curry/pomegranate-aws5r` v1 | ข้อสอบ `same_source_test` (ทับทิม 72 รูป) | 16 → Pomegranate_Good, 8 → Pomegranate_Bad (ดูจากรูป ชุดนี้ไม่ได้เขียนไว้) |
+
+`same_source_test` มาจากชุดถ่ายเดียวกับ Fruits Quality (เจอรูปเดียวกันเป๊ะ) ตัดรูปที่ซ้ำออกแล้วแต่ยังไม่นับเป็นข้อสอบอิสระ
+ชุดที่ดูแล้วไม่ใช้ : `lime-dataset-new` (ชื่อไฟล์ซ้ำกับ Fruits Quality 32 รูป) และชุดที่ไม่บอกสด/เน่า
+
+สร้างไฟล์เอง (ในโฟลเดอร์ train ต้องมี `datasets/kaggle_boxes` กับ `datasets/external_test` จาก zip รอบ 2 และโหลด 4 ชุดข้างบนไว้ใน `datasets/roboflow/`)
+
+```bash
+cd khadsan-ai/train
+P=../web/venv/bin/python
+$P prepare_data.py                                   # ได้ datasets/data_5fruits (ชุดเดิม seed 42)
+AV="datasets/data_5fruits,datasets/external_test,datasets/kaggle_boxes"
+$P add_new_data.py --src datasets/roboflow/lime_quality --out datasets/same_source_test --rename "lime_bad=Lime_Bad,lime_good=Lime_Good" --per-class 150 --prefix lq_ --avoid "$AV"
+$P add_new_data.py --src datasets/roboflow/pomegranate_aws5r --out datasets/same_source_test --rename "16=Pomegranate_Good,8=Pomegranate_Bad" --prefix pa_ --avoid "$AV"
+$P add_new_data.py --src datasets/roboflow/quality_detection --out datasets/new_test --rename "good=Pomegranate_Good" --per-class 150 --prefix qd_ --avoid "$AV,datasets/same_source_test"
+cp -R datasets/kaggle_boxes datasets/kaggle_boxes_v3
+$P add_new_data.py --src datasets/roboflow/rotten_orange --out datasets/kaggle_boxes_v3 --rename "rotten_orange=Orange_Bad,fresh_orange=Orange_Good" --prefix ro_ --avoid "datasets/data_5fruits/val,datasets/data_5fruits/test,datasets/external_test,datasets/new_test,datasets/same_source_test"
+cd datasets
+zip -r -q KaggleBoxes_v3.zip kaggle_boxes_v3 -x "*.DS_Store"
+zip -r -q NewTest.zip new_test same_source_test -x "*.DS_Store"
+```
+
+`--avoid` ข้ามรูปที่คล้ายรูปในโฟลเดอร์ที่ใส่ (กันข้อสอบรั่ว) / `--per-class` จำกัดจำนวนรูปต่อคลาส / Roboflow ทำรูปเดิมหลายเวอร์ชัน (หมุน กลับด้าน) สคริปต์เก็บไว้รูปเดียว
+
+เทรน : อัปโหลด 3 ไฟล์ไว้ใน `KhadSan_detect_v3` แล้วเปิด `train_round3.ipynb` กด Run all (ราว 3-4 ชม.)
+ผลที่ต้องดู : `results/new_tests.csv` (ข้อสอบใหม่ ทั้งโมเดลใหม่และโมเดล 5, 8) / `results/seed_summary.md` (3 seed แกว่งแค่ไหน) / `external_*_summary.txt`
 
 ### Colab ขึ้นว่าใช้ GPU ไม่ได้
 
