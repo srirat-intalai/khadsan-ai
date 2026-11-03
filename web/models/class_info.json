@@ -12,6 +12,6 @@
     "Pomegranate_Good"
   ],
   "img_size": 640,
-  "chosen_experiment": "8_cosine_more_data",
+  "chosen_experiment": "11_new_data_seed2",
   "ultralytics_version": "8.4.191"
 }
