@@ -11,6 +11,8 @@
 | `train_round1.ipynb` | โน้ตบุ๊ก Colab รอบ 1 : การทดลอง 1-7 |
 | `train_round2.ipynb` | โน้ตบุ๊ก Colab รอบ 2 : เพิ่มรูปเข้าชุดเทรน (การทดลอง 8) และแก้ RMSProp (การทดลอง 9) |
 | `train_round3.ipynb` | โน้ตบุ๊ก Colab รอบ 3 : เพิ่มส้มเน่า เทรนซ้ำ 3 seed (การทดลอง 10-12) และสอบข้อสอบใหม่ |
+| `make_team_data.py` | รอบ 4 : แบ่งชุดรูปที่ทีมรวบรวมเพิ่ม เป็นรูปเทรน (ร่างกรอบด้วยโมเดล 11 แล้วคัดด้วยตา) กับข้อสอบ |
+| `train_round4.ipynb` | โน้ตบุ๊ก Colab รอบ 4 : เพิ่มรูปมะนาว/ทับทิมของทีม เทรนซ้ำ 3 seed (การทดลอง 13-15) |
 
 
 ## 1. เทรนตามรอบเดิม (รอบ 1 / รอบ 2)
@@ -22,6 +24,7 @@
 | รอบ 1 | `KhadSan_detect` | `ExternalTest.zip` (ไม่บังคับ แต่ถ้าไม่มีจะไม่ได้ผลทดสอบกับรูปจากแหล่งอื่น) |
 | รอบ 2 | `KhadSan_detect_v2` | `ExternalTest.zip` และ `KaggleBoxes.zip` (บังคับทั้งคู่) |
 | รอบ 3 | `KhadSan_detect_v3` | `ExternalTest.zip`, `KaggleBoxes_v3.zip` และ `NewTest.zip` (บังคับทั้ง 3 ไฟล์ ดูข้อ 1.1) |
+| รอบ 4 | `KhadSan_detect_v4` | `KaggleBoxes_v4.zip` และ `TeamTest.zip` (ส่วน `ExternalTest.zip`, `NewTest.zip` ใช้ของใน v3 ดูข้อ 1.2) |
 
 ชุดรูปหลัก (Fruits Quality) เลือกได้ 1 ทาง
 - ตั้ง Colab Secret ชื่อ `ROBOFLOW_API_KEY` (กดรูปกุญแจทางซ้ายใน Colab) ใส่ API key ของ Roboflow ห้ามพิมพ์ key ลงในโค้ด
@@ -87,6 +90,27 @@ zip -r -q NewTest.zip new_test same_source_test -x "*.DS_Store"
 
 เทรน : อัปโหลด 3 ไฟล์ไว้ใน `KhadSan_detect_v3` แล้วเปิด `train_round3.ipynb` กด Run all (ราว 3-4 ชม.)
 ผลที่ต้องดู : `results/new_tests.csv` (ข้อสอบใหม่ ทั้งโมเดลใหม่และโมเดล 5, 8) / `results/seed_summary.md` (3 seed แกว่งแค่ไหน) / `external_*_summary.txt`
+
+### 1.2 รอบ 4 ใช้ข้อมูลอะไร
+
+ชุดรูปที่ทีมรวบรวมเพิ่ม (Team-collected set) 444 รูป ไม่มีกรอบ มีแค่ชื่อโฟลเดอร์บอกคลาส
+- มะนาวกับทับทิม (จุดอ่อนจากรอบ 3) สุ่มครึ่งหนึ่ง (seed 42) ไปเทรน อีกครึ่งเป็นข้อสอบ ผลไม้อื่นเป็นข้อสอบทั้งหมด → `team_collected_test` 287 รูป
+- ครึ่งที่ไปเทรน : ให้โมเดล 11 ร่างกรอบ ชื่อคลาสใช้ตามโฟลเดอร์ แล้วเปิดดูทีละรูป
+  ผ่าน 52 จาก 142 รูป (มะนาวเน่า 20 / มะนาวสด 3 / ทับทิมเน่า 23 / ทับทิมสด 6) ที่ไม่ผ่านจดไว้ใน `reject.txt`
+  ส่วนใหญ่ที่ไม่ผ่านเป็นรูปกองผลไม้แน่นๆ ที่กรอบไม่ครบทุกลูก (ลูกที่ไม่มีกรอบจะสอนโมเดลผิดว่าไม่ใช่ผลไม้)
+
+```bash
+cd train
+../web/venv/bin/python make_team_data.py --draft    # แบ่งชุด + ร่างกรอบ ดูรูปใน datasets/team_train_draft/preview
+../web/venv/bin/python make_team_data.py --build    # รวมรูปที่ผ่านกับ kaggle_boxes_v3 ได้ datasets/kaggle_boxes_v4
+cd datasets
+zip -r -q KaggleBoxes_v4.zip kaggle_boxes_v4 -x "*.DS_Store"
+zip -r -q TeamTest.zip team_collected_test -x "*.DS_Store"
+```
+
+เทรน : อัปโหลด 2 ไฟล์ไว้ใน `KhadSan_detect_v4` แล้วเปิด `train_round4.ipynb` กด Run all (ราว 3-4 ชม.)
+ผลที่ต้องดู : `results/team_tests.csv` + `team_test_*_accuracy.csv` (รายคลาส) / `results/seed_summary_round4.md` / `new_tests.csv`
+ก่อนเทรน โมเดล 11 ทำได้บน `team_collected_test` : ทายถูก 49.8% มะนาวเน่า 1/33 ทับทิมเน่า 2/49
 
 ### Colab ขึ้นว่าใช้ GPU ไม่ได้
 

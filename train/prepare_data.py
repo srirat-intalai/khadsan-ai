@@ -1,27 +1,10 @@
-# เตรียมข้อมูลก่อนเทรน YOLOv8 (ไฟล์เดียวจบ มี 3 ส่วน)
-#
-# ส่วนที่ 1 : ชุดเทรน จาก "Fruits Quality" (Roboflow alex-day-qzfwa/fruits-quality-qtdtf v1, CC BY 4.0)
-#   - เก็บแค่ผลไม้ 5 ชนิด x สด/เน่า = 10 คลาส (ตัดฝรั่ง กับคลาสแปลกๆ ทิ้ง)
-#   - รูปที่หน้าตาเกือบเหมือนกัน (ถ่ายลูกเดิมหลายช็อต) จับไว้กลุ่มเดียวกัน
-#     ไม่ให้ไปโผล่ทั้งใน train และ test (ไม่งั้นคะแนน test จะดูดีเกินจริง = data leakage)
-#   - แบ่งใหม่ 70 / 15 / 15 แล้วเขียน data.yaml ให้ YOLO
-#
-# ส่วนที่ 2 : ชุดทดสอบภายนอก จาก Kaggle "Fruit Diseases" (มีแค่ แอปเปิล กล้วย ส้ม ไม่มีกรอบ)
-#   - เอาไว้สอบโมเดลกับรูปจากแหล่งอื่นที่โมเดลไม่เคยเห็น
-#   - คลาสละไม่เกิน 100 รูป ข้ามรูปซ้ำ ย่อรูป เปลี่ยนชื่อคลาสให้ตรงกับโมเดล
-#   - ถ้าไม่มีโฟลเดอร์ Kaggle (เช่นตอนรันบน Colab) ส่วนนี้ข้ามไปเอง
-#
-# ส่วนที่ 3 (เทรนรอบ 2) : เอารูป Kaggle มาเพิ่มเป็นรูปเทรน ให้โมเดลเคยเห็นรูปหลายแบบขึ้น
-#   - รูป Kaggle ไม่มีกรอบ เลยให้โมเดลรอบแรกช่วยหาตำแหน่งผลไม้ (กรอบ) ส่วนคำตอบ สด/เน่า ใช้ชื่อโฟลเดอร์
-#   - เก็บเฉพาะกรอบที่โมเดลเห็นเป็น "ชนิดเดียวกับชื่อโฟลเดอร์" (ถ้าเห็นเป็นชนิดอื่น กรอบมักวางผิดที่ เช่น ไปตีกรอบใบไม้)
-#   - ข้ามรูปที่คล้ายรูปในชุดทดสอบภายนอก (ไม่งั้นข้อสอบรั่ว คะแนนดูดีเกินจริง)
-#   - เพิ่มรูปพื้นหลังที่ไม่มีผลไม้ (คน ของใช้ รถ สัตว์ จาก COCO128) แบบไม่มีกรอบ สอนโมเดลว่า "แบบนี้ไม่ใช่ผลไม้"
-#     (รอบแรกโมเดลไม่เคยเห็นรูปไม่มีผลไม้เลย เลยตีกรอบหน้าคนเป็นทับทิม)
-#   - รันในเครื่องตัวเอง (ต้องมีโมเดลรอบแรกที่ web/models/best_detect.pt):  python prepare_data.py --make-boxes
-#
-# วิธีรัน (ในโฟลเดอร์ train):  python prepare_data.py
-# เปลี่ยนที่อยู่ได้:  python prepare_data.py --src โฟลเดอร์FruitsQuality --out โฟลเดอร์ผลลัพธ์
-# รอบ 2 เพิ่มรูป Kaggle เข้าชุดเทรน:  เติม --extra โฟลเดอร์kaggle_boxes
+# เตรียมข้อมูลก่อนเทรน มี 3 ส่วน
+# ส่วนที่ 1 : ชุดเทรนจาก Fruits Quality (Roboflow alex-day-qzfwa/fruits-quality-qtdtf v1, CC BY 4.0)
+#   เก็บ 5 ผลไม้ x สด/เน่า = 10 คลาส / รูปที่เกือบเหมือนกันอยู่ชุดเดียวกัน (กัน data leakage) / แบ่ง 70/15/15
+# ส่วนที่ 2 : ชุดทดสอบภายนอกจาก Kaggle Fruit Diseases (แอปเปิล กล้วย ส้ม ไม่มีกรอบ ไม่มีโฟลเดอร์ก็ข้าม)
+# ส่วนที่ 3 (รอบ 2) : ตีกรอบรูป Kaggle ด้วยโมเดลรอบแรก (คลาสใช้ชื่อโฟลเดอร์) + รูปพื้นหลัง COCO128 สอนว่าไม่ใช่ผลไม้
+# วิธีรัน (ในโฟลเดอร์ train) : python prepare_data.py [--src FruitsQuality --out ผลลัพธ์ --extra kaggle_boxes]
+#   ส่วนที่ 3 : python prepare_data.py --make-boxes (ต้องมี web/models/best_detect.pt)
 
 import os
 import sys
@@ -83,7 +66,7 @@ for i in range(len(sys.argv)):
 
 # ===== ใช้ร่วมกันทั้ง 2 ส่วน =====
 
-# แปลงรูปเป็น RGB  (png พื้นโปร่งใส ถ้าแปลงตรงๆ พื้นจะดำ เลยวางบนพื้นขาวก่อน แบบเดียวกับเว็บ)
+# แปลงเป็น RGB (png โปร่งใส วางบนพื้นขาวก่อน)
 def to_rgb(img):
     if "A" in img.mode or "transparency" in img.info:
         img = img.convert("RGBA")
@@ -93,7 +76,7 @@ def to_rgb(img):
     return img.convert("RGB")
 
 
-# ลายนิ้วมือรูป : ย่อเหลือ 9x8 ขาวดำ แล้วดูว่าแต่ละจุดสว่างกว่าจุดข้างขวาไหม ได้เลข 0/1 มา 64 ตัว
+# ลายนิ้วมือรูป : ย่อเป็น 9x8 ขาวดำ เทียบแต่ละจุดกับจุดขวา ได้เลข 0/1 64 ตัว
 def picture_print(img):
     small = img.convert("L").resize((9, 8))
     px = list(small.getdata())
@@ -112,11 +95,9 @@ def count_diff(a, b):
     return bin(a ^ b).count("1")
 
 
-# =====================================================================
-# ส่วนที่ 1 : ชุดเทรน
-# =====================================================================
+# ===== ส่วนที่ 1 : ชุดเทรน =====
 
-# อ่านรูปทั้งหมด (รวม train/valid/test เดิม) แล้วเปลี่ยนเลขคลาสเป็นแบบใหม่
+# อ่านรูปทั้งหมด (train/valid/test เดิม) แล้วเปลี่ยนเลขคลาส
 def read_all_images():
     items = []
     dropped_boxes = 0
@@ -143,7 +124,7 @@ def read_all_images():
                     else:
                         dropped_boxes = dropped_boxes + 1
 
-            # รูปที่ไม่เหลือกรอบของ 5 ชนิดเลย (เช่น มีแต่ฝรั่ง) ไม่เอา
+            # รูปที่ไม่มีกรอบ 5 ชนิดเลย (เช่น มีแต่ฝรั่ง) ไม่เอา
             if len(lines) == 0:
                 dropped_images = dropped_images + 1
                 continue
@@ -153,11 +134,10 @@ def read_all_images():
     return items
 
 
-# จับกลุ่มรูปที่คล้ายกัน
-# ไล่ทีละรูป ถ้าคล้ายกับรูปไหนในกลุ่มที่มีอยู่แล้ว ก็ใส่กลุ่มนั้น ถ้าไม่คล้ายใครเลย ก็เปิดกลุ่มใหม่
+# จับกลุ่มรูปที่คล้ายกัน : คล้ายกลุ่มไหนเข้ากลุ่มนั้น ไม่คล้ายใครเปิดกลุ่มใหม่
 def make_groups(items):
     groups = []      # แต่ละกลุ่ม = list ของรูป
-    prints = []      # ลายนิ้วมือของรูปในแต่ละกลุ่ม (ลำดับเดียวกับ groups)
+    prints = []      # ลายนิ้วมือของแต่ละกลุ่ม
     for it in items:
         with Image.open(it["image"]) as im:
             p = picture_print(im)
@@ -180,7 +160,7 @@ def make_groups(items):
     return groups
 
 
-# แบ่งกลุ่มเป็น train / val / test (ทั้งกลุ่มไปอยู่ชุดเดียวกัน)
+# แบ่งทั้งกลุ่มไป train / val / test
 def split_groups(groups):
     rng = random.Random(SEED)
     rng.shuffle(groups)
@@ -201,7 +181,7 @@ def split_groups(groups):
     return {"train": train, "val": val, "test": test}
 
 
-# เขียนไฟล์ออกไปเป็นรูปแบบที่ YOLO ต้องการ + ตารางจำนวน ไว้ใส่รายงาน
+# เขียนไฟล์แบบที่ YOLO ต้องการ + ตารางจำนวน
 def write_dataset(splits):
     if os.path.exists(OUT_DIR):
         shutil.rmtree(OUT_DIR)
@@ -233,8 +213,8 @@ def write_dataset(splits):
         f.write("nc: " + str(len(NEW_NAMES)) + "\n")
         f.write("names: [" + names_text + "]\n")
 
-    # รอบ 2 : อีกไฟล์ data_more.yaml = ชุดเทรนเดิม + รูป Kaggle (val กับ test ใช้ชุดเดิม จะได้เทียบกันได้ยุติธรรม)
-    # YOLO รับ train เป็น list ได้ หาไฟล์ป้ายเองจากโฟลเดอร์ labels ข้างๆ images
+    # รอบ 2 : data_more.yaml = ชุดเทรนเดิม + รูปเพิ่ม (val/test ชุดเดิม)
+    # YOLO รับ train เป็น list ได้
     if EXTRA_DIR != "":
         extra_count = len(os.listdir(os.path.join(EXTRA_DIR, "images")))
         with open(os.path.join(OUT_DIR, "data_more.yaml"), "w", encoding="utf-8") as f:
@@ -253,9 +233,7 @@ def write_dataset(splits):
             writer.writerow(row)
 
 
-# =====================================================================
-# ส่วนที่ 2 : ชุดทดสอบภายนอก (Kaggle)
-# =====================================================================
+# ===== ส่วนที่ 2 : ชุดทดสอบภายนอก (Kaggle) =====
 def make_external_test():
     rng = random.Random(SEED)
     for old_name in sorted(KAGGLE_NAMES):
@@ -286,7 +264,7 @@ def make_external_test():
                 skipped = skipped + 1      # รูปเสีย
                 continue
 
-            # ชุดนี้มีรูปหมุน/ใส่จุดซ้ำเยอะ ถ้าคล้ายรูปที่เลือกไปแล้ว ข้าม
+            # ชุดนี้มีรูปหมุน/ใส่จุดซ้ำเยอะ คล้ายรูปที่เลือกแล้วข้าม
             p = picture_print(img)
             same = False
             for q in chosen:
@@ -304,14 +282,12 @@ def make_external_test():
         print(new_name, "เซฟ", saved, "รูป | ข้ามรูปซ้ำ/รูปเสีย", skipped)
 
 
-# =====================================================================
-# ส่วนที่ 3 : ตีกรอบรูป Kaggle ให้อัตโนมัติ (ใช้เทรนรอบ 2)
-# =====================================================================
+# ===== ส่วนที่ 3 : ตีกรอบรูป Kaggle อัตโนมัติ (รอบ 2) =====
 def make_kaggle_boxes():
-    from ultralytics import YOLO    # import ตรงนี้ ส่วนอื่นจะได้ไม่ต้องลง ultralytics
+    from ultralytics import YOLO    # import ตอนใช้ ส่วนอื่นไม่ต้องลง ultralytics
     model = YOLO(BOX_MODEL)
 
-    # ลายนิ้วมือของรูปในชุดทดสอบภายนอก ไว้กันไม่ให้รูปคล้ายๆ กันหลุดเข้าชุดเทรน
+    # ลายนิ้วมือชุดทดสอบภายนอก กันรูปคล้ายหลุดเข้าชุดเทรน
     test_prints = []
     for c in os.listdir(EXTERNAL_DIR):
         folder = os.path.join(EXTERNAL_DIR, c)
@@ -362,7 +338,7 @@ def make_kaggle_boxes():
             if bad:
                 same_as_test = same_as_test + 1
                 continue
-            # ห้ามคล้ายรูปที่เลือกไปแล้ว (ชุดนี้มีรูปหมุน/ใส่จุดซ้ำเยอะ)
+            # ห้ามคล้ายรูปที่เลือกไปแล้ว
             for q in chosen:
                 if count_diff(p, q) <= SAME_PICTURE:
                     bad = True
@@ -372,21 +348,21 @@ def make_kaggle_boxes():
                 continue
 
             img.thumbnail((EXTERNAL_MAX_SIDE, EXTERNAL_MAX_SIDE))
-            # ให้โมเดลรอบแรกหาตำแหน่งผลไม้ (สด/เน่าไม่สนที่มันทาย ใช้ชื่อโฟลเดอร์แทน)
+            # ให้โมเดลรอบแรกหากรอบ (คลาสใช้ชื่อโฟลเดอร์)
             r = model.predict(img, imgsz=640, conf=BOX_CONF, iou=0.5, agnostic_nms=True, verbose=False)[0]
             lines = []
             cover = 0.0
             for i in range(len(r.boxes)):
                 seen_fruit = r.names[int(r.boxes.cls[i])].split("_")[0]
                 if seen_fruit != new_name.split("_")[0]:
-                    continue     # โมเดลเห็นเป็นผลไม้ชนิดอื่น กรอบนี้น่าจะผิดที่ ไม่เอา
+                    continue     # เห็นเป็นผลไม้ชนิดอื่น กรอบน่าจะผิดที่
                 x, y, w, h = r.boxes.xywhn[i]
-                # กรอบเล็กกว่า 3% ของรูป น่าจะไม่ใช่ผลไม้หลัก (เช่น ใบไม้ จุดบนผิว) ไม่เอา
+                # กรอบเล็กกว่า 3% ของรูป น่าจะไม่ใช่ผลไม้หลัก
                 if float(w) * float(h) < 0.03:
                     continue
                 cover = cover + float(w) * float(h)
                 lines.append(str(class_id) + " " + str(round(float(x), 6)) + " " + str(round(float(y), 6)) + " " + str(round(float(w), 6)) + " " + str(round(float(h), 6)))
-            # ไม่เจอกรอบ หรือกรอบรวมกันเล็กไป (รูปมีหลายลูกแต่ตีกรอบได้แค่บางลูก ลูกที่เหลือจะสอนผิดว่าไม่ใช่ผลไม้) ไม่เอา
+            # ไม่เจอกรอบ หรือกรอบรวมเล็กไป (ลูกที่ไม่มีกรอบจะสอนผิด) ไม่เอา
             if len(lines) == 0 or cover < BOX_COVER:
                 no_box = no_box + 1
                 continue
@@ -400,7 +376,7 @@ def make_kaggle_boxes():
         print(new_name, "เซฟ", saved, "| ข้าม: คล้ายชุดทดสอบ", same_as_test, "รูปซ้ำ", repeat, "หากรอบไม่เจอ", no_box)
 
 
-# รูปพื้นหลังที่ไม่มีผลไม้ : ก๊อปมาพร้อมไฟล์ป้ายว่างๆ (ไม่มีกรอบ = ไม่มีผลไม้ในรูปนี้)
+# รูปพื้นหลัง : ไฟล์ป้ายว่าง = ไม่มีผลไม้
 def add_backgrounds():
     img_folder = os.path.join(BG_DIR, "images", "train2017")
     lab_folder = os.path.join(BG_DIR, "labels", "train2017")
@@ -412,7 +388,7 @@ def add_backgrounds():
     for f in sorted(os.listdir(img_folder)):
         if not f.lower().endswith(".jpg"):
             continue
-        # รูปที่มีกล้วย แอปเปิล ส้ม ไม่เอา (ไม่งั้นจะสอนผิดว่าผลไม้พวกนี้ไม่ใช่ผลไม้)
+        # รูปที่มีกล้วย แอปเปิล ส้ม ไม่เอา
         fruit = False
         label_file = os.path.join(lab_folder, os.path.splitext(f)[0] + ".txt")
         if os.path.exists(label_file):

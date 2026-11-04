@@ -1,13 +1,12 @@
-/* หน้าตาเว็บ : สมุดตรวจ QC กระดาษครีม หมึกดำ เมจิกเขียว
-   ฟอนต์ Anuphan เนื้อหา / Mitr หัวข้อ / Mali ลายมือ โหลดใน templates/index.html */
+/* หน้าตาเว็บ : สมุดตรวจ QC กระดาษครีม หมึกดำ เมจิกเขียว (ฟอนต์โหลดใน index.html) */
 
-/* ===== สีหลัก แก้ตรงนี้ (สีกรอบในรูปผลตรวจอยู่ใน app.py ชื่อ COLOR_ ต้องแก้ตามด้วย) ===== */
+/* ===== สีหลัก (แก้แล้วต้องแก้ COLOR_ ใน app.py ด้วย) ===== */
 :root {
     --paper: #FDFBF9;      /* กระดาษครีม พื้นหลัก */
     --dew: #F7EFE9;        /* ครีมเข้มขึ้นนิด พื้นรอง */
     --ink: #171717;        /* หมึกดำ เส้นขอบ ตัวหนังสือ */
     --cocoa: #2B1A07;      /* หัวข้อใหญ่ */
-    --muted: #5E544B;      /* ตัวหนังสือรอง (อ่านง่ายกว่าสีเทาเดิม) */
+    --muted: #5E544B;      /* ตัวหนังสือรอง */
     --olive: #4F6815;      /* สีเมจิก ใช้เน้นอย่างเดียว */
     --olive-soft: #E4EBD3;
     --rotten: #A63A12;     /* ไว้ใช้ตอนผลเป็น "เน่า" */
@@ -20,7 +19,7 @@ body {margin: 0; background: var(--paper); color: var(--ink); font-family: 'Anup
 .page {max-width: 1200px; margin: 0 auto; padding: 24px 24px 0 24px;}
 h1, h2, h3 {font-family: 'Mitr', sans-serif;}
 ::selection {background: var(--olive-soft); color: var(--ink);}
-/* อะไรที่ใส่ hidden ไว้ ต้องซ่อนจริงๆ (กันกฎ display อื่นมาทับ) scan.js ใช้ hidden ซ่อน/โชว์ของ */
+/* hidden ต้องซ่อนจริง (scan.js ใช้ซ่อน/โชว์) */
 [hidden] {display: none !important;}
 
 
@@ -77,7 +76,7 @@ h1, h2, h3 {font-family: 'Mitr', sans-serif;}
 }
 
 
-/* ===== ป้ายตรวจคุณภาพ (ไอเดียจากป้ายชื่อบนสมุด) ===== */
+/* ===== ป้ายตรวจคุณภาพ ===== */
 .tag-card {
     position: relative;
     background: #FFFFFF;
@@ -123,7 +122,7 @@ h1, h2, h3 {font-family: 'Mitr', sans-serif;}
 .sticker {position: absolute;}
 
 
-/* ===== แถบขั้นตอน : กรอบมุมมน คั่นข้อด้วยเส้นประแบบในป้ายตรวจ + ช่องติ๊กเขียนมือ ===== */
+/* ===== แถบขั้นตอน ===== */
 .steps {
     display: flex;
     flex-wrap: wrap;
@@ -139,45 +138,45 @@ h1, h2, h3 {font-family: 'Mitr', sans-serif;}
 .step-title {font-family: 'Mitr', sans-serif; font-size: 18px; font-weight: 500; color: var(--cocoa);}
 .step-sub {font-size: 14px; color: var(--muted);}
 
-/* ช่องติ๊ก (ขนาดใกล้ๆ ช่อง สด/เน่า ในป้าย) + คำเขียนมือ */
+/* ช่องติ๊ก + คำเขียนมือ */
 .mark {display: flex; align-items: center; gap: 10px; margin-top: 10px; min-height: 28px; font-family: 'Mali', cursive; font-size: 17px; font-weight: 500; color: var(--muted);}
 .tick-box {position: relative; flex: none; width: 22px; height: 22px; border: 1.5px solid var(--ink); border-radius: 4px; background: var(--paper);}
-/* ติ๊กใหญ่กว่าช่อง เลยล้นขึ้นไปข้างบนนิดๆ */
+/* ติ๊กใหญ่กว่าช่อง ล้นขึ้นนิดๆ */
 .tick-box img {position: absolute; left: -1px; bottom: 1px; width: 30px; height: 30px;}
 /* ติ๊กโชว์เฉพาะขั้นที่เสร็จ กากบาทโชว์เฉพาะขั้นที่ error */
 .tick-ok, .tick-x {display: none;}
 .step-done .tick-ok, .step-error .tick-x {display: inline;}
-/* กากบาทตอนรูปใช้ไม่ได้ ให้อยู่ในช่องพอดี ไม่ล้น */
+/* กากบาทตอนรูปใช้ไม่ได้ */
 .step-error .tick-box img {left: 1px; bottom: 1px; width: 18px; height: 18px;}
 
 .step-done .step-num, .step-done .mark {color: var(--olive);}
 .step-done .tick-box {border-color: var(--olive);}
 .step-unsure .tick-box, .step-none .tick-box, .step-skip .tick-box {border-style: dashed; border-color: var(--muted);}
-/* มีลูกสดที่ควรดูอีกที : ช่องเส้นประสีเขียว (เบากว่า ตรวจซ้ำ) */
+/* มีลูกสดที่ควรดูอีกที : ช่องเส้นประเขียว */
 .step-check .step-num, .step-check .mark {color: var(--olive);}
 .step-check .tick-box {border-style: dashed; border-color: var(--olive);}
-/* มีลูกเน่า : ขั้นที่ 3 เป็นสีอิฐ ตรงกับตราปั๊ม "คัดออก" */
+/* มีลูกเน่า : ขั้นที่ 3 สีอิฐ */
 .step-bad .step-num, .step-bad .mark {color: var(--rotten);}
 .step-bad .tick-box {border-color: var(--rotten);}
 
-/* ข้อความ "กำลังทำ…" + วงหมุน แทนช่องติ๊ก ตอนขั้นนั้นกำลังทำงาน (scan.js ใส่ class now) */
+/* "กำลังทำ…" + วงหมุน แทนช่องติ๊ก (scan.js ใส่ class now) */
 .mark-wait {display: none; align-items: center; gap: 10px; margin-top: 10px; min-height: 28px; font-family: 'Mali', cursive; font-size: 17px; font-weight: 500; color: var(--olive);}
 .step.now .mark {display: none;}
 .step.now .mark-wait {display: flex;}
 .step.now .step-num {color: var(--olive);}
-/* วงหมุนวาดด้วยเส้นหมึกเขียว ขาดไปช่วงนึง */
+/* วงหมุน */
 .spin {flex: none; width: 20px; height: 20px; border: 2.5px solid var(--olive); border-right-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;}
 @keyframes spin {
     to {transform: rotate(360deg);}
 }
-/* ตอนเล่นติ๊กทีละขั้น : ขั้นที่ยังไม่ถึง ซ่อนติ๊กไว้ก่อน (ยังจองที่ไว้ หน้าไม่กระตุก) */
+/* ระหว่างเล่น : ขั้นที่ยังไม่ถึงซ่อนติ๊ก (จองที่ไว้ หน้าไม่กระตุก) */
 .play .step:not(.shown) .mark {visibility: hidden; animation: show-late 0s 6s forwards;}
 .play .step:not(.shown):not(.now) .step-num {color: var(--ink);}
-/* ผลตรวจซ่อนไว้ระหว่างเล่น เล่นจบแล้วค่อยๆ โผล่ขึ้นมา */
+/* ผลตรวจซ่อนระหว่างเล่น จบแล้วค่อยโผล่ */
 .result-layout {transition: opacity 0.5s ease-out, transform 0.5s ease-out;}
-/* visibility hidden ด้วย : ระหว่างซ่อน กด Tab หรือโปรแกรมอ่านหน้าจอจะไม่ไปเจอปุ่ม/ข้อความที่ยังมองไม่เห็น */
+/* visibility hidden : ระหว่างซ่อน Tab/โปรแกรมอ่านหน้าจอจะไม่เจอ */
 .play .result-layout {opacity: 0; visibility: hidden; transform: translateY(12px); animation: show-late 0.5s ease-out 6s forwards;}
-/* กันพัง : ถ้า scan.js โหลดไม่ได้ (เช่นเน็ตหลุด) ผ่านไป 6 วิ ผลก็โผล่เองอยู่ดี ไม่ค้างหายไปตลอด */
+/* scan.js โหลดไม่ได้ 6 วิ ผลก็โผล่เอง */
 @keyframes show-late {
     to {opacity: 1; transform: none; visibility: visible;}
 }
@@ -185,7 +184,7 @@ h1, h2, h3 {font-family: 'Mitr', sans-serif;}
 .skip-row {margin: -14px 0 20px 0;}
 .skip-anim {background: none; border: none; padding: 0 4px; min-height: 44px; font-family: inherit; font-size: 15px; color: var(--olive); text-decoration: underline; text-underline-offset: 3px; cursor: pointer;}
 .skip-anim:focus-visible {outline: 2px solid var(--olive); outline-offset: 2px; border-radius: 4px;}
-/* ขั้นที่ 1 ตอนรูปใช้ไม่ได้ ใช้สีอิฐแบบเดียวกับข้อความ error */
+/* ขั้นที่ 1 ตอนรูปใช้ไม่ได้ : สีอิฐ */
 .step-error .step-num, .step-error .mark {color: var(--rotten);}
 .step-error .tick-box {border-color: var(--rotten);}
 
@@ -195,7 +194,7 @@ h1, h2, h3 {font-family: 'Mitr', sans-serif;}
 .section-sub {margin-bottom: 24px;}
 
 
-/* ===== การ์ด : ขอบดำบาง มุม 12 เงาจางๆ ===== */
+/* ===== การ์ด ===== */
 .card {
     background: var(--paper);
     border: 1.5px solid var(--ink);
@@ -208,12 +207,12 @@ h1, h2, h3 {font-family: 'Mitr', sans-serif;}
 .card-sub {color: var(--muted); font-size: 15px; margin-bottom: 14px;}
 
 /* ===== ฟอร์มใส่รูป ===== */
-/* ช่องเลือกไฟล์ ขอบประ (กดแล้วมือถือจะให้เลือกถ่ายรูปหรือเลือกจากคลัง) */
+/* ช่องเลือกไฟล์ ขอบประ */
 .drop {position: relative; display: block; border: 1.5px dashed var(--ink); border-radius: 12px; background: var(--dew); padding: 18px; margin-bottom: 16px; cursor: pointer;}
 .drop-label {display: block; font-weight: 500; margin-bottom: 8px;}
-/* ช่องเลือกไฟล์ของจริง ซ่อนให้มองไม่เห็น แต่ยังกด Tab มาโฟกัสได้ และโปรแกรมอ่านหน้าจอยังอ่านได้ */
+/* ช่องเลือกไฟล์จริง ซ่อนไว้ แต่ยัง Tab ถึงและโปรแกรมอ่านหน้าจออ่านได้ */
 .file-input {position: absolute; left: 18px; top: 18px; width: 1px; height: 1px; opacity: 0;}
-/* ปุ่มภาษาไทยที่โชว์แทน (กดแล้วเปิดเลือกรูป เพราะอยู่ใน label เดียวกัน) */
+/* ปุ่มภาษาไทยที่โชว์แทน */
 .file-btn {
     display: inline-flex;
     align-items: center;
@@ -228,44 +227,44 @@ h1, h2, h3 {font-family: 'Mitr', sans-serif;}
     box-shadow: rgba(0, 0, 0, 0.25) 0 1px 2px;
 }
 .drop:hover .file-btn {transform: translateY(-1px);}
-/* ปุ่มส่งรูป ใช้หน้าตาเดียวกับปุ่ม เริ่มสแกน */
+/* ปุ่มส่งรูป */
 button.pill {font-family: inherit; font-size: 16px; cursor: pointer; min-height: 44px;}
 button.pill:active {transform: translateY(1px); background: var(--olive-soft);}
 
-/* บอกสถานะโดยไม่ใช้ JavaScript (CSS :has ดูว่าเลือกรูปแล้วหรือยัง) */
-/* กด Tab มาที่ช่องเลือกรูป ให้เห็นกรอบโฟกัสชัดๆ (คนใช้คีย์บอร์ด) */
+/* บอกสถานะด้วย CSS :has (ไม่ต้องใช้ JavaScript) */
+/* กรอบโฟกัสตอนกด Tab */
 .drop:focus-within {outline: 2px solid var(--olive); outline-offset: 3px;}
 .drop-hint, .drop-ok {display: block; margin-top: 8px; font-size: 14px;}
 .drop-hint {color: var(--muted);}
 .drop-ok {display: none; color: var(--olive); font-weight: 500;}
 .drop-ok img {vertical-align: -2px;}
-/* ยังไม่เลือกรูป: ปุ่มดูจางๆ เส้นประ (ยังกดได้ เบราว์เซอร์จะเตือนให้เลือกรูปก่อน) */
+/* ยังไม่เลือกรูป : ปุ่มจาง เส้นประ */
 form:has(input[type="file"]:invalid) .scan-btn {border-style: dashed; color: var(--muted) !important; box-shadow: none;}
-/* เลือกรูปแล้ว : ปุ่มตรวจกลายเป็นปุ่มหลัก สีเขียวทึบ เด่นสุดในฟอร์ม */
+/* เลือกรูปแล้ว : ปุ่มตรวจเป็นสีเขียวทึบ */
 form:has(input[type="file"]:valid) .scan-btn {background: var(--olive); border-color: var(--olive); color: var(--paper) !important;}
 form:has(input[type="file"]:valid) .scan-btn .btn-ready img {filter: brightness(0) invert(1);}
-/* เลือกรูปแล้ว: ช่องเลือกรูปเป็นเส้นทึบสีเขียว + ข้อความ "เลือกรูปแล้ว" */
+/* เลือกรูปแล้ว : ช่องเลือกรูปเส้นทึบเขียว */
 form:has(input[type="file"]:valid) .drop {border-style: solid; border-color: var(--olive); background: var(--olive-soft);}
 form:has(input[type="file"]:valid) .drop-hint {display: none;}
 form:has(input[type="file"]:valid) .drop-ok {display: block;}
-/* กดปุ่มตรวจแล้ว (ระหว่างรอผล) scan.js ใส่ class is-busy ให้ฟอร์ม ปุ่มเปลี่ยนเป็น "AI กำลังตรวจ…" */
+/* ระหว่างรอผล (scan.js ใส่ class is-busy) */
 .btn-busy {display: none;}
 .is-busy .btn-ready {display: none;}
 .is-busy .btn-busy {display: inline;}
-/* ระหว่างรอผล ซ่อน "เลือกรูปแล้ว กด ตรวจเลย ได้" (กดไปแล้ว ข้อความนี้ไม่จริงแล้ว) */
+/* ระหว่างรอผล ซ่อน "เลือกรูปแล้ว กด ตรวจเลย ได้" */
 form.scan-form.is-busy .drop .drop-ok {display: none;}
-/* เขียนชื่อเต็ม form.scan-form.is-busy ให้ชนะกฎ "เลือกรูปแล้ว" ด้านบน (ไม่งั้นตัวหนังสือเป็นสีครีมบนพื้นเขียวอ่อน มองไม่เห็น) */
+/* ชื่อเต็มเพื่อให้ชนะกฎ "เลือกรูปแล้ว" ด้านบน */
 form.scan-form.is-busy button.scan-btn {background: var(--olive-soft) !important; border-color: var(--olive); color: var(--olive) !important; cursor: progress;}
-/* ระหว่างรอผล มุมกรอบสแกนกะพริบเบาๆ ให้รู้ว่ากำลังทำงาน */
+/* ระหว่างรอผล มุมกรอบสแกนกะพริบ */
 .busy-page .frame .corner {animation: corner-pulse 0.9s ease-in-out infinite alternate;}
 @keyframes corner-pulse {
     from {opacity: 1;}
     to {opacity: 0.3;}
 }
 
-/* รูปตัวอย่างที่เลือกไว้ (scan.js สร้างให้) */
+/* รูปตัวอย่าง (scan.js สร้าง) */
 .preview {display: block; max-width: 100%; max-height: 200px; width: auto; margin-top: 12px; border-radius: 8px; border: 1.5px solid var(--ink); object-fit: contain; background: var(--paper);}
-/* เตือนไฟล์ใหญ่เกิน (scan.js เติมข้อความ) */
+/* เตือนไฟล์ใหญ่เกิน */
 .drop-warn {display: block; margin-top: 8px; font-size: 14px; color: var(--rotten); font-weight: 500;}
 
 /* ===== โหมดกล้อง ===== */
@@ -274,21 +273,21 @@ button.pill.cam-open {background: var(--paper);}
 .cam-open img {width: 22px; height: 22px;}
 .cam-or {font-size: 14px; color: var(--muted);}
 .cam {margin-bottom: 16px;}
-/* ภาพสดจากกล้อง ขอบหมึกดำ มุมมนแบบกรอบสแกน */
-/* กรอบภาพกล้อง : ภาพสด + ผืนวาดกรอบตอนสแกนสด วางซ้อนกันพอดี */
+/* ภาพสดจากกล้อง */
+/* ภาพสด + ผืนวาดกรอบ ซ้อนกันพอดี */
 .cam-stage {position: relative; border: 1.5px solid var(--ink); border-radius: 12px; overflow: hidden; background: var(--ink);}
 .cam-video {display: block; width: 100%; max-height: 420px; object-fit: contain;}
 .cam-boxes {position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none;}
-/* จอคอม หน้าเริ่มต้น : scan.js ย้ายภาพกล้องไปไว้ในกรอบสแกนใหญ่ด้านขวา */
+/* จอคอม หน้าเริ่มต้น : ภาพกล้องอยู่ในกรอบสแกนใหญ่ */
 .has-cam .frame-msg, .has-cam .frame-photo {display: none;}
-/* มือถือ : กล้องอยู่ด้านบน กรอบนี้ไม่ต้องบอก "ใส่รูปผลไม้ก่อนนะ" */
+/* มือถือ : ไม่ต้องบอก "ใส่รูปผลไม้ก่อนนะ" */
 .card.cam-up {display: none;}
 .has-cam .corner {border-color: var(--paper);}
 .frame .cam-stage {position: absolute; left: 0; top: 0; width: 100%; height: 100%; border: none; border-radius: 0;}
 .frame .cam-video {height: 100%; max-height: none;}
 /* สรุปผลใต้ภาพตอนสแกนสด */
 .live-info {margin-top: 10px; padding: 8px 12px; border-radius: 10px; background: var(--olive-soft); color: var(--olive); font-weight: 500; font-variant-numeric: tabular-nums;}
-/* เจอลูกเน่า : แถบสรุปเป็นสีอิฐ (scan.js ใส่ class live-bad ให้) */
+/* เจอลูกเน่า : แถบสีอิฐ */
 .live-info.live-bad {background: var(--dew); color: var(--rotten);}
 button.pill.cam-live[aria-pressed="true"] {background: var(--olive-soft); border-color: var(--olive); color: var(--olive) !important;}
 .cam-note {margin-top: 8px; font-size: 14px; color: var(--muted);}
@@ -297,16 +296,16 @@ button.pill.cam-shot {background: var(--olive); color: var(--paper) !important; 
 .cam-msg {margin-bottom: 16px; padding: 10px 14px; border: 1.5px solid var(--rotten); border-radius: 10px; color: var(--rotten); font-size: 15px;}
 .drop:has(.drop-warn:not([hidden])) .drop-hint {display: none;}
 .drop:has(.drop-warn:not([hidden])) {border-color: var(--rotten);}
-/* กล่อง error เป็นกระดาษขอบสีอิฐ แบบเดียวกับกรอบสแกนตอนรูปใช้ไม่ได้ */
+/* กล่อง error ขอบสีอิฐ */
 .error-box {background: var(--paper); border: 1.5px solid var(--rotten); color: var(--rotten); border-radius: 10px; padding: 12px 16px; margin-bottom: 20px;}
 
-/* ===== สองคอลัมน์ ซ้าย = ใส่รูป / ขวา = กรอบสแกน (ตอนยังไม่มีผล) ===== */
+/* ===== สองคอลัมน์ (ยังไม่มีผล) : ซ้าย = ใส่รูป / ขวา = กรอบสแกน ===== */
 .columns {display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start;}
 
-/* ===== ตอนมีผลแล้ว : ซ้าย = ป้ายตรวจ + รายการ / ขวา = รูปตีกรอบ + สแกนรูปต่อไป + ข้อมูลทางเทคนิค ===== */
+/* ===== มีผลแล้ว : ซ้าย = ป้ายตรวจ + รายการ / ขวา = รูป + สแกนต่อ + ข้อมูลทางเทคนิค ===== */
 .result-layout {display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start;}
 
-/* การ์ดข้อมูลทางเทคนิค พับไว้ กดหัวข้อเพื่อเปิด */
+/* การ์ดข้อมูลทางเทคนิค พับไว้ */
 details.card > summary {cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; min-height: 44px;}
 details.card > summary::-webkit-details-marker {display: none;}
 details.card > summary::after {content: "+"; margin-left: auto; font-family: 'Mali', cursive; font-size: 24px; color: var(--muted);}
@@ -341,25 +340,25 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 .br {bottom: 14px; right: 14px; border-left: none; border-top: none; border-bottom-right-radius: 18px;}
 .has-img .corner {border-color: var(--paper);}
 
-/* คนที่ตั้งเครื่องให้ลดการเคลื่อนไหว ปุ่มไม่ต้องขยับ */
+/* ผู้ใช้ตั้งลดการเคลื่อนไหว : ปุ่มไม่ขยับ */
 @media (prefers-reduced-motion: reduce) {
     .pill, .file-btn {transition: none; transform: none !important;}
     .spin, .busy-page .frame .corner {animation: none;}
     .result-layout {transition: none;}
 }
 
-/* แถบเขียวใต้กรอบ บอกว่าตรวจเสร็จแล้ว (ไม่ใช่ปุ่ม) */
+/* แถบเขียวใต้กรอบ = ตรวจเสร็จ */
 .status {margin-top: 14px; display: flex; align-items: center; gap: 10px; background: var(--olive-soft); color: var(--olive); border-radius: 10px; padding: 10px 14px; font-size: 15px; font-weight: 500;}
 .status-bad {background: var(--dew); color: var(--rotten);}      /* มีลูกเน่า ไม่ใช่สีเขียว */
 .status-unsure {background: var(--dew); color: var(--muted);}
-/* สดทั้งหมดแต่ควรดูอีกที : เขียวเส้นประ แบบเดียวกับตราปั๊ม (ไม่ใช่สีเทาแบบ ตรวจซ้ำ) */
+/* สดทั้งหมดแต่ควรดูอีกที : เขียวเส้นประ */
 .status-check {background: var(--paper); border: 1.5px dashed var(--olive);}
 
 
-/* ===== ผลตรวจ (ป้ายตรวจคุณภาพเอียงนิดๆ) ===== */
+/* ===== ผลตรวจ ===== */
 .result-wrap {padding: 10px 6px;}
 .result-tag {transform: rotate(-1.5deg);}
-/* ตราปั๊มวางกลางเหนือหัวป้าย (ทั้งคอมและมือถือ) ไม่ทับชื่อป้าย */
+/* ตราปั๊มกลางเหนือหัวป้าย */
 .stamp {
     display: table;
     margin: 0 auto 10px auto;
@@ -375,18 +374,18 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 }
 /* ตราปั๊ม "เน่า" ใช้สีอิฐ */
 .stamp-rotten {color: var(--rotten); border-color: var(--rotten);}
-/* ตราปั๊ม "ตรวจซ้ำ" ตอนโมเดลไม่แน่ใจ ใช้สีหมึกจาง เส้นประ */
+/* ตราปั๊ม "ตรวจซ้ำ" : หมึกจาง เส้นประ */
 .stamp-unsure {color: var(--muted); border-color: var(--muted); border-style: dashed;}
-/* ตราปั๊ม "ควรดูอีกที" (สดทั้งหมด แต่บางลูกมั่นใจไม่สูง) เขียวเส้นประ เล็กกว่า เบากว่า "ตรวจซ้ำ" */
+/* ตราปั๊ม "ควรดูอีกที" : เขียวเส้นประ เบากว่า "ตรวจซ้ำ" */
 .stamp-check {color: var(--olive); border-color: var(--olive); border-style: dashed; font-size: 20px;}
-/* บรรทัดเล็กในตรา "สด N ลูก" ตอนลูกสดทุกลูกควรดูอีกที (คนอ่านตราก่อน คำเตือนเลยต้องอยู่ในตรา) */
+/* บรรทัดเล็กในตรา (คนอ่านตราก่อน คำเตือนเลยอยู่ในตรา) */
 .stamp-note {display: block; font-size: 15px; font-weight: 500; text-align: center;}
-/* คำที่ไม่ควรถูกตัดกลางคำตอนขึ้นบรรทัดใหม่ */
+/* ไม่ตัดกลางคำ */
 .nowrap {white-space: nowrap;}
 /* เตือนตอนความมั่นใจต่ำ */
 .tag-warn {margin-top: 10px; color: var(--muted); font-size: 15px;}
 .tag-bad {color: var(--rotten); font-weight: 600;}   /* เลขลูกที่ต้องคัดออก */
-/* ทางลัดไปสแกนรูปต่อไป (โชว์แค่บนมือถือ) */
+/* ทางลัดสแกนรูปต่อไป (มือถือ) */
 .jump-next {display: none;}
 
 
@@ -432,7 +431,7 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
     .hero-right {min-height: 340px;}
     .hero-tag {width: 260px; right: 10px; top: 56px;}
     .hero-photo {width: 220px; height: 270px;}
-    /* เช็กลิสต์บนมือถือ เรียงข้างกัน 3 ช่อง ซ่อนคำอธิบายย่อย จะได้ไม่กินจอ */
+    /* มือถือ : เช็กลิสต์ 3 ช่องข้างกัน ซ่อนคำอธิบายย่อย */
     .steps {flex-wrap: nowrap;}
     .step {flex: 1 1 0; min-width: 0; flex-direction: column; gap: 2px; padding: 12px 10px;}
     .step-sub {display: none;}
@@ -442,7 +441,7 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
     .tick-box {width: 18px; height: 18px;}
     .tick-box img {width: 24px; height: 24px;}
     .step-error .tick-box img {width: 14px; height: 14px;}
-    /* ข้อความตอนกำลังทำ ให้อยู่บรรทัดเดียว แถบขั้นตอนจะได้ไม่สูงขึ้นแล้วหน้ากระตุก */
+    /* ข้อความกำลังทำ บรรทัดเดียว หน้าไม่กระตุก */
     .mark-wait {font-size: 14px; gap: 6px; white-space: nowrap;}
     .mark-text {white-space: nowrap;}
     .mark-wait .spin {width: 16px; height: 16px;}
@@ -451,10 +450,9 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
     .cam-actions {gap: 8px;}
     .cam-actions .pill {padding-left: 16px; padding-right: 16px;}
     .section-title {font-size: 28px;}
-    /* จอเล็ก คอลัมน์ซ้ายขวาเรียงลงมาเป็นแถวเดียว */
+    /* คอลัมน์ซ้ายขวาเรียงเป็นแถวเดียว */
     .columns {grid-template-columns: 1fr; gap: 0;}
-    /* ตอนมีผล: ยกการ์ดทุกใบออกมาเรียงใหม่ ให้รูปตีกรอบอยู่ติดป้ายตรวจ รายการอยู่ใต้รูป
-       ป้ายตรวจ -> รูปตีกรอบ -> รายการทีละลูก -> AI ตัดสินจากอะไร -> สแกนรูปต่อไป -> ข้อมูลทางเทคนิค */
+    /* มีผล : เรียงใหม่ ป้ายตรวจ -> รูป -> รายการ -> AI ตัดสินจากอะไร -> สแกนต่อ -> ข้อมูลทางเทคนิค */
     .result-layout {display: flex; flex-direction: column; gap: 0; align-items: stretch;}
     .result-col {display: contents;}
     .r-tag {order: 1;}
@@ -471,16 +469,16 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 
 
 /* ===== ส่วนเสริมของป้ายผลตรวจ ===== */
-/* รายชื่อชนิดที่โมเดลรู้จัก (ในการ์ดใส่รูป) */
+/* ชนิดที่โมเดลรู้จัก */
 .known {font-size: 14px; color: var(--muted); margin: -6px 0 14px 0;}
 /* อันดับรองลงมา */
 .tag-others {font-size: 14px; color: var(--muted); margin-top: -4px;}
 
-/* ===== รายการผลไม้ที่เจอในรูป (เลขตรงกับเลขบนกรอบในรูป) ===== */
+/* ===== รายการผลไม้ (เลขตรงกับกรอบในรูป) ===== */
 .fruit-list {list-style: none; padding: 0; margin: 16px 0 0 0;}
 .fruit-item {display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1.5px dashed var(--ink);}
 .fruit-item:last-child {border-bottom: none;}
-/* ลูกสดที่พับไว้ (มีหลายลูก) กดเปิดดูได้ */
+/* ลูกสดที่พับไว้ */
 .fresh-fold {margin-top: 6px; border-top: 1.5px dashed var(--ink);}
 .fresh-fold > summary {display: flex; align-items: center; min-height: 44px; padding-top: 6px; color: var(--olive); font-weight: 600; cursor: pointer;}
 .fresh-fold > summary:focus-visible {outline: 2px solid var(--olive); outline-offset: 2px; border-radius: 6px;}
@@ -500,27 +498,27 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 .good {background: var(--olive);}
 .bad {background: var(--rotten);}
 .unsure {background: var(--muted);}
-/* เลขลูกสด = วงพื้นครีม ขอบเขียว (เหมือนป้ายเลขในรูป) ไม่ต้องแยกด้วยสีอย่างเดียว */
+/* เลขลูกสด = วงครีมขอบเขียว (ไม่ใช้สีอย่างเดียวแยก) */
 .fruit-num.good {background: var(--paper); color: var(--olive); border: 2px solid var(--olive);}
 .fruit-state-good {color: var(--olive); font-weight: 600;}
 .fruit-state-bad {color: var(--rotten); font-weight: 600;}
 .fruit-state-unsure {color: var(--muted); font-weight: 600;}
-/* ป้ายเล็ก "ควรดูอีกที" ในรายการ : ขอบเขียวเส้นประ (แยกจาก "สด" ธรรมดาได้โดยไม่ต้องดูสี) */
+/* ป้าย "ควรดูอีกที" : ขอบเขียวเส้นประ */
 .flag-check {display: inline-block; margin-left: 4px; padding: 0 8px; border: 1.5px dashed var(--olive); border-radius: 999px; color: var(--olive); font-size: 13px; font-weight: 500; line-height: 1.5; white-space: nowrap;}
-/* รูปผลตรวจ : กรอบสูงตามรูปจริง ไม่มีขอบว่าง (รูปแนวตั้งสูงไม่เกิน 560px จะได้ไม่ยาวเกินจอ) */
+/* รูปผลตรวจ : สูงตามรูป ไม่เกิน 560px */
 .frame.has-result {height: auto;}
 .frame.has-result .frame-photo {height: auto; max-height: 560px;}
 
-/* ข้อความซ่อนไว้ให้โปรแกรมอ่านหน้าจออ่าน คนมองไม่เห็น */
+/* ซ่อนจากตา แต่โปรแกรมอ่านหน้าจออ่านได้ */
 .sr-only {position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;}
 
 /* ===== การตัดบรรทัด ===== */
-/* หัวข้อ: แบ่งบรรทัดให้ยาวพอๆ กัน ไม่เหลือคำเดียวโดดๆ (เบราว์เซอร์เก่าที่ไม่รู้จักจะตัดแบบเดิม) */
+/* หัวข้อ : บรรทัดยาวพอๆ กัน */
 .section-title, .card-title, .tag-title, .step-title, .section-sub .caption {text-wrap: balance;}
-/* ข้อความรอง: ไม่ให้บรรทัดสุดท้ายเหลือคำเดียว */
+/* ข้อความรอง : บรรทัดสุดท้ายไม่เหลือคำเดียว */
 .card-sub, .known, .chip-note, .tag-others, .tag-warn, .frame-msg, .why-list li {text-wrap: pretty;}
 
-/* จอแคบมาก (320) : ขั้นตอน 3 ช่องเหลือที่น้อย ลดตัวหนังสือนิดนึง คำจะได้ไม่ล้นช่อง */
+/* จอแคบมาก (320) : ลดตัวหนังสือขั้นตอน ไม่ให้ล้นช่อง */
 @media (max-width: 360px) {
     .step {padding: 12px 8px;}
     .mark {font-size: 13px;}

@@ -1,7 +1,6 @@
-# เว็บ KhadSan AI (Flask) ตีกรอบผลไม้ทุกลูกในรูป แล้วบอกว่าสดหรือเน่า
-# รันในเครื่อง:  python app.py  แล้วเปิด http://localhost:7860
-# หน้าตาเว็บอยู่ใน templates/index.html กับ static/style.css
-# โมเดลอยู่ใน models/best_detect.pt (ได้จากการเทรนใน train/train_round1.ipynb หรือ train_round2.ipynb)
+# เว็บ KhadSan AI (Flask) : ตีกรอบผลไม้ทุกลูกในรูป แล้วบอกว่าสดหรือเน่า
+# รัน: python app.py แล้วเปิด http://localhost:7860
+# โมเดล: models/best_detect.pt (เทรนด้วยโน้ตบุ๊กใน train/)
 
 import os
 import io
@@ -16,30 +15,30 @@ MODEL_FILE = os.path.join(folder, "models", "best_detect.pt")
 CLASS_FILE = os.path.join(folder, "models", "class_info.json")
 
 MAX_MB = 10             # กันคนอัปรูปใหญ่เกิน
-MAX_PIXELS = 50000000   # กันรูปที่ไฟล์เล็กแต่พิกเซลเยอะผิดปกติ (กินแรมจนเว็บค้าง)
-CONF_MIN = 0.40         # กรอบที่โมเดลมั่นใจต่ำกว่านี้ ไม่นับว่าเจอผลไม้ (เดิม 0.25 แล้วหน้าคนโดนตีกรอบเป็นผลไม้ ลองวัดกับโมเดล 11 แล้ว 0.40 เจอผลไม้น้อยลงแค่ 3 จาก 1,055 ลูก)
+MAX_PIXELS = 50000000   # กันรูปพิกเซลเยอะผิดปกติ (กินแรม)
+CONF_MIN = 0.40         # มั่นใจต่ำกว่านี้ไม่นับ (0.25 เคยตีกรอบหน้าคน)
 LOW_CONF = 60           # ความมั่นใจต่ำกว่านี้ (%) ให้ขึ้น "ตรวจซ้ำ"
-HIGH_CONF = 85          # ความมั่นใจตั้งแต่นี้ขึ้นไป (%) ถือว่ามั่นใจสูง
-MAX_FRUITS = 30         # โชว์รายการไม่เกินกี่ลูก (รูปที่มีผลไม้เยอะมาก หน้าเว็บจะได้ไม่ยาวเกิน)
-SAME_FRUIT = 0.5        # กรอบ 2 กรอบทับกันเกินครึ่ง = ผลไม้ลูกเดียวกัน เก็บไว้แค่กรอบที่มั่นใจกว่า
+HIGH_CONF = 85          # ตั้งแต่นี้ขึ้นไป (%) = มั่นใจสูง
+MAX_FRUITS = 30         # โชว์รายการไม่เกินกี่ลูก
+SAME_FRUIT = 0.5        # กรอบทับกันเกินครึ่ง = ลูกเดียวกัน
 
-# ชื่อไทยของผลไม้ 5 ชนิด (ชื่อคลาสในโมเดลเป็นอังกฤษ เช่น Apple_Good / Apple_Bad)
+# ชื่อไทยของผลไม้ 5 ชนิด
 THAI_NAMES = {
     "Apple": "แอปเปิล", "Banana": "กล้วย", "Orange": "ส้ม",
     "Pomegranate": "ทับทิม", "Lime": "มะนาว",
 }
 
-# ขนาดรูปที่โมเดลใช้ตอนเทรน (อ่านจาก class_info.json ถ้าไม่มีใช้ 640)
+# ขนาดรูปตอนเทรน (จาก class_info.json ไม่มีใช้ 640)
 IMG_SIZE = 640
 if os.path.exists(CLASS_FILE):
     with open(CLASS_FILE, encoding="utf-8") as f:
         IMG_SIZE = json.load(f).get("img_size", 640)
 
-# สีกรอบในรูป ต้องตรงกับ --olive / --rotten / --muted / --paper ใน static/style.css (เปลี่ยนสีที่นั่น ต้องมาแก้ตรงนี้ด้วย)
+# สีกรอบ ต้องตรงกับสีใน static/style.css
 COLOR_GOOD = (79, 104, 21)      # เขียวมะกอก = สด
 COLOR_BAD = (166, 58, 18)       # สีอิฐ = เน่า
 COLOR_UNSURE = (94, 84, 75)     # หมึกจาง = ไม่แน่ใจ
-COLOR_PAPER = (253, 251, 249)   # สีครีม ใช้ทำขอบรอบกรอบ กับสีตัวเลข
+COLOR_PAPER = (253, 251, 249)   # สีครีม ขอบกรอบและตัวเลข
 
 
 # ===== ไอคอน วาดเองเป็น svg แล้วแปลงเป็น <img> =====
@@ -63,9 +62,9 @@ ICONS = {
 
 
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = MAX_MB * 1024 * 1024   # ไฟล์ใหญ่กว่านี้ Flask ตัดทิ้งเอง
+app.config["MAX_CONTENT_LENGTH"] = MAX_MB * 1024 * 1024   # ใหญ่กว่านี้ Flask ตัดทิ้ง
 
-# ค่าที่หน้าเว็บใช้ทุกครั้ง ตั้งไว้ทีเดียวตรงนี้ ไม่ต้องส่งซ้ำทุกหน้า
+# ค่าที่ทุกหน้าใช้
 app.jinja_env.globals["icons"] = ICONS
 app.jinja_env.globals["thai_names"] = list(THAI_NAMES.values())
 app.jinja_env.globals["max_mb"] = MAX_MB
@@ -74,10 +73,10 @@ app.jinja_env.globals["model_ready"] = os.path.exists(MODEL_FILE)   # ใส่�
 
 
 # ===== จัดการรูป =====
-# แก้รูปให้พร้อมใช้ : หมุนตามข้อมูลกล้อง แล้วแปลงเป็น RGB
+# หมุนรูปตามกล้อง แล้วแปลงเป็น RGB
 def fix_image(img):
-    img = ImageOps.exif_transpose(img)   # รูปจากมือถือบางทีหมุนเอง หมุนกลับให้ตรง
-    # png พื้นหลังโปร่งใส ถ้าแปลงตรงๆ พื้นจะดำ เลยวางบนพื้นขาวก่อน
+    img = ImageOps.exif_transpose(img)   # รูปมือถือบางทีหมุนเอง
+    # png โปร่งใส วางบนพื้นขาวก่อน (ไม่งั้นพื้นดำ)
     if "A" in img.mode or "transparency" in img.info:
         img = img.convert("RGBA")
         white = Image.new("RGB", img.size, "white")
@@ -86,7 +85,7 @@ def fix_image(img):
     return img.convert("RGB")
 
 
-# แปลงรูปเป็นข้อความ base64 ใส่ใน <img> ได้เลย (ไม่ต้องเซฟรูปลงเครื่อง = ไม่เก็บรูปของผู้ใช้)
+# รูปเป็น base64 ใส่ <img> ได้เลย (ไม่เซฟรูปผู้ใช้)
 def to_base64(img, max_size=900):
     temp = img.copy()
     temp.thumbnail((max_size, max_size))
@@ -95,33 +94,33 @@ def to_base64(img, max_size=900):
     return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
-# ค่าสีเฉลี่ย R G B (0-255) หลังย่อรูป ไว้โชว์ว่าส่งอะไรเข้าโมเดล
+# สีเฉลี่ย R G B ของรูปที่ส่งเข้าโมเดล
 def color_mean(img):
     small = img.copy()
-    small.thumbnail((IMG_SIZE, IMG_SIZE))   # YOLO ย่อด้านยาวเป็น IMG_SIZE โดยไม่บีบรูป
+    small.thumbnail((IMG_SIZE, IMG_SIZE))   # ย่อด้านยาวเป็น IMG_SIZE แบบไม่บีบ
     result = []
-    for band in small.split():              # แยกเป็น 3 ชั้น R G B
+    for band in small.split():
         pixels = list(band.getdata())
         result.append(round(sum(pixels) / len(pixels)))
     return result, small.size
 
 
 # ===== โมเดล =====
-# โหลดครั้งเดียวแล้วจำไว้ (โหลดทุกครั้งที่มีคนส่งรูปจะช้ามาก)
+# โหลดครั้งเดียวแล้วจำไว้
 model = None
 
 
 def load_model():
     global model
     if model is None:
-        from ultralytics import YOLO   # import ตรงนี้ เพราะโหลดนาน หน้าเว็บจะได้เปิดเร็ว
+        from ultralytics import YOLO   # import ตอนใช้ หน้าเว็บจะเปิดเร็ว
         model = YOLO(MODEL_FILE)
     return model
 
 
-# ให้โมเดลหาผลไม้ในรูป ได้เป็น list ของผลไม้แต่ละลูก เรียงทีละแถว (บนลงล่าง ซ้ายไปขวา)
+# หาผลไม้ในรูป เรียงบนลงล่าง ซ้ายไปขวา
 def detect(img):
-    # agnostic_nms=True : ลูกเดียวกันโดนตีกรอบ 2 ชนิด (เช่น แอปเปิล กับ ทับทิม) ให้เหลือกรอบเดียว ตัวเลขนับจะไม่เกินจริง
+    # agnostic_nms : ลูกเดียวโดนตีกรอบ 2 ชนิด ให้เหลือกรอบเดียว
     result = load_model().predict(img, imgsz=IMG_SIZE, conf=CONF_MIN, iou=SAME_FRUIT,
                                   agnostic_nms=True, max_det=100, verbose=False)[0]
     fruits = []
@@ -138,14 +137,12 @@ def detect(img):
             state = "good"
         else:
             state = "bad"
-        # check = ลูกที่ AI ว่าสด แต่มั่นใจไม่ถึงระดับสูง ควรให้คนดูอีกที
-        # (ลูกเน่าถูกคัดออกอยู่แล้ว ลูกที่อันตรายคือลูกที่บอกว่าสดแต่จริงๆ เน่า แล้วหลุดไปถึงลูกค้า)
+        # check = ลูกที่ว่าสดแต่มั่นใจไม่สูง (ถ้าจริงๆ เน่าจะหลุดถึงลูกค้า)
         check = state == "good" and conf < HIGH_CONF
         fruits.append({"fruit": fruit, "thai": THAI_NAMES.get(fruit, fruit), "quality": quality,
-                       "conf": round(conf), "box": box, "state": state, "check": check})   # % ปัดเป็นเลขกลม อ่านง่าย
+                       "conf": round(conf), "box": box, "state": state, "check": check})   # % ปัดเป็นเลขกลม
 
-    # ให้เลขเรียงแบบอ่านหนังสือ : แถวบนก่อน ในแถวเดียวกันซ้ายไปขวา
-    # ลูกที่จุดกลางสูงต่างจากลูกแรกของแถวไม่ถึงครึ่งความสูงของลูกนั้น ถือว่าอยู่แถวเดียวกัน
+    # เรียงแบบอ่านหนังสือ : จุดกลางสูงต่างกันไม่ถึงครึ่งลูก = แถวเดียวกัน
     fruits.sort(key=middle_y)
     rows = []
     for f in fruits:
@@ -195,27 +192,26 @@ def draw_boxes(img, fruits):
     out = img.copy()
     draw = ImageDraw.Draw(out)
     line = max(5, round(max(out.size) / 120))       # รูปใหญ่ เส้นก็หนาขึ้น
-    ring = max(2, line // 2)                        # ความหนาขอบครีมรอบนอก
-    font_size = max(18, round(max(out.size) / 18))  # ใหญ่พอให้อ่านเลขออกบนจอมือถือ
+    ring = max(2, line // 2)                        # ขอบครีมรอบนอก
+    font_size = max(18, round(max(out.size) / 18))  # ให้อ่านเลขออกบนมือถือ
     font = ImageFont.load_default(size=font_size)
 
-    # วาดกรอบใหญ่ก่อน กรอบเล็กทีหลัง กรอบเล็กจะไม่โดนกรอบใหญ่ทับ
+    # วาดกรอบใหญ่ก่อน กรอบเล็กจะไม่โดนทับ
     order = sorted(fruits, key=box_area, reverse=True)
 
-    # รอบที่ 1 : วาดกรอบทุกลูก (ขอบครีมรอบนอก + กรอบสีด้านใน จะเห็นชัดทุกพื้นหลัง เช่น กรอบเขียวบนสนามหญ้า)
+    # รอบ 1 : กรอบทุกลูก (ขอบครีม + สีด้านใน เห็นชัดทุกพื้นหลัง)
     for f in order:
         x1, y1, x2, y2 = f["box"]
         draw.rectangle([x1 - ring, y1 - ring, x2 + ring, y2 + ring], outline=COLOR_PAPER, width=ring)
         if f["check"]:
-            # สดแต่ควรดูอีกที : พื้นเส้นครีม แล้วทับด้วยเส้นประสีเขียว
+            # สดแต่ควรดูอีกที = เส้นประเขียวบนพื้นครีม
             draw.rectangle([x1, y1, x2, y2], outline=COLOR_PAPER, width=line)
             dashed_rect(draw, [x1, y1, x2, y2], box_color(f), line)
         else:
             draw.rectangle([x1, y1, x2, y2], outline=box_color(f), width=line)
 
-    # รอบที่ 2 : วาดป้ายเลขทีหลังกรอบทั้งหมด เลขจะไม่โดนเส้นกรอบของลูกอื่นทับ
-    # ลูกสด = ป้ายพื้นครีม เลขสีเขียว / เน่า และตรวจซ้ำ = ป้ายพื้นทึบ เลขสีครีม
-    # (คนที่แยกสีเขียวกับแดงไม่ออก ก็ยังดูออกจากพื้นป้ายว่าลูกไหนสด)
+    # รอบ 2 : ป้ายเลข (วาดทีหลัง จะไม่โดนกรอบอื่นทับ)
+    # สด = ป้ายครีมเลขเขียว / อื่นๆ = ป้ายทึบเลขครีม (คนแยกสีไม่ออกก็ดูออก)
     for f in order:
         x1 = f["box"][0]
         y1 = f["box"][1]
@@ -232,7 +228,7 @@ def draw_boxes(img, fruits):
     return out
 
 
-# วาดกรอบเส้นประ (PIL ไม่มีเส้นประให้ใช้ เลยวาดเส้นสั้นๆ ต่อกันเองทีละด้าน)
+# กรอบเส้นประ (PIL ไม่มีให้ วาดเส้นสั้นๆ ต่อกันเอง)
 def dashed_rect(draw, box, color, width):
     x1, y1, x2, y2 = box
     dash = width * 3      # ความยาวเส้นแต่ละท่อน
@@ -240,14 +236,14 @@ def dashed_rect(draw, box, color, width):
     x = x1
     while x < x2:
         end = min(x + dash, x2)
-        draw.line([x, y1, end, y1], fill=color, width=width)   # ด้านบน
-        draw.line([x, y2, end, y2], fill=color, width=width)   # ด้านล่าง
+        draw.line([x, y1, end, y1], fill=color, width=width)
+        draw.line([x, y2, end, y2], fill=color, width=width)
         x = x + dash + gap
     y = y1
     while y < y2:
         end = min(y + dash, y2)
-        draw.line([x1, y, x1, end], fill=color, width=width)   # ด้านซ้าย
-        draw.line([x2, y, x2, end], fill=color, width=width)   # ด้านขวา
+        draw.line([x1, y, x1, end], fill=color, width=width)
+        draw.line([x2, y, x2, end], fill=color, width=width)
         y = y + dash + gap
 
 
@@ -260,16 +256,13 @@ def overlap(a, b):
     return w * h
 
 
-# ทีละลูก : ตัดรูปเล็กไว้โชว์ + เขียนเหตุผลว่าทำไม AI ตอบแบบนี้
-# เหตุผลใช้แค่ข้อมูลจริง ไม่แต่งเอง
-#   1) สิ่งที่ AI ให้มา : ชนิด สด/เน่า และ % ความมั่นใจ
-#   2) สิ่งที่วัดจากรูปได้จริง ที่อาจทำให้ AI มั่นใจน้อยลง : ลูกเล็ก ชิดขอบ ซ้อนกัน มืด
+# ทีละลูก : ตัดรูปเล็ก + เหตุผลจากข้อมูลจริง (ชนิด สด/เน่า % และสิ่งที่วัดได้ เช่น ลูกเล็ก ชิดขอบ มืด)
 def add_details(img, fruits):
     width, height = img.size
     for f in fruits:
         x1 = int(f["box"][0])
         y1 = int(f["box"][1])
-        # กันกรอบเล็กจนไม่มีพื้นที่ (กว้าง/สูง 0) ตัดรูปไม่ได้
+        # กรอบเล็กจนกว้าง/สูง 0 ตัดรูปไม่ได้
         x2 = max(int(f["box"][2]), x1 + 1)
         y2 = max(int(f["box"][3]), y1 + 1)
         crop = img.crop([x1, y1, x2, y2])
@@ -283,7 +276,7 @@ def add_details(img, fruits):
         else:
             f["level"] = "มั่นใจต่ำ"
 
-        # เหตุผล : เขียนเฉพาะลูกที่ต้องตรวจซ้ำ ว่า AI เอนไปทางไหน (ลูกสด/เน่า มีสถานะกับ % บอกอยู่แล้ว)
+        # เหตุผล : เฉพาะลูกที่ต้องตรวจซ้ำ ว่า AI เอนไปทางไหน
         f["reason"] = ""
         if f["state"] == "unsure":
             if f["quality"] == "Good":
@@ -292,7 +285,7 @@ def add_details(img, fruits):
                 lean = "เน่า"
             f["reason"] = "AI เอนไปทาง" + lean + " แต่มั่นใจไม่ถึง " + str(LOW_CONF) + "% เลยให้คนตรวจซ้ำ"
 
-        # สิ่งที่อาจทำให้ AI มั่นใจน้อยลง (บอกเฉพาะลูกที่ยังไม่มั่นใจสูง)
+        # สิ่งที่อาจทำให้ AI มั่นใจน้อยลง
         notes = []
         if f["conf"] < HIGH_CONF:
             if box_area(f) < width * height * 0.015:
@@ -308,7 +301,7 @@ def add_details(img, fruits):
         f["notes"] = notes
 
 
-# นับว่า สด / เน่า / ตรวจซ้ำ อย่างละกี่ลูก + จดเลขลูกที่ต้องคัดออก / ต้องตรวจซ้ำ / สดแต่ควรดูอีกที
+# นับสด / เน่า / ตรวจซ้ำ และจดเลขลูกของแต่ละกลุ่ม
 def count_states(fruits):
     summary = {"total": len(fruits), "good": 0, "bad": 0, "unsure": 0,
                "bad_nums": [], "unsure_nums": [], "check_nums": []}
@@ -320,15 +313,14 @@ def count_states(fruits):
             summary["unsure_nums"].append("#" + str(f["num"]))
         if f["check"]:
             summary["check_nums"].append("#" + str(f["num"]))
-    # เน่ากี่ % ของทั้งถาด (ใช้ตัดสินว่าจะรับล็อตนี้ไหม) ปัดเป็นจำนวนเต็ม
+    # เน่ากี่ % ของทั้งถาด
     summary["bad_percent"] = 0
     if summary["total"] > 0:
         summary["bad_percent"] = round(summary["bad"] * 100 / summary["total"])
     return summary
 
 
-# ใช้ตอนเรียงรายการ : เน่า (ต้องคัดออก) ขึ้นก่อน แล้วตรวจซ้ำ แล้วสดที่ควรดูอีกที แล้วสด
-# (เลขลูกยังเป็นเลขเดิมตามตำแหน่งในรูป)
+# เรียงรายการ : เน่า → ตรวจซ้ำ → สดที่ควรดูอีกที → สด (เลขลูกไม่เปลี่ยน)
 def list_order(f):
     if f["state"] == "bad":
         return 0
@@ -353,10 +345,10 @@ def scan():
     if not os.path.exists(MODEL_FILE):
         return render_template("index.html", error="ยังไม่มีไฟล์โมเดล ให้วาง best_detect.pt ไว้ใน web/models/ แล้วเปิดเว็บใหม่")
 
-    # เปิดรูป + เช็กไฟล์ (ถ้าไฟล์เสียหรือไม่ใช่รูปจริงจะเข้า except)
+    # เปิดรูป (ไฟล์เสีย/ไม่ใช่รูป จะเข้า except)
     try:
         img = Image.open(file.stream, formats=["JPEG", "PNG", "WEBP"])
-        # เช็กจำนวนพิกเซลก่อน load (ตอน open ยังอ่านแค่หัวไฟล์ ยังไม่กินแรม)
+        # เช็กพิกเซลก่อน load (ตอน open ยังไม่กินแรม)
         if img.width * img.height > MAX_PIXELS:
             return render_template("index.html", error="รูปนี้ความละเอียดสูงเกินไป ลองย่อรูปก่อนนะ")
         img.load()
@@ -364,7 +356,7 @@ def scan():
     except Exception:
         return render_template("index.html", error="เปิดรูปนี้ไม่ได้ ไฟล์อาจเสียหรือไม่ใช่ jpg / png / webp จริง ลองรูปอื่นดูนะ")
 
-    # ให้โมเดลตรวจ (ถ้าพัง ไม่โชว์ error ดิบให้ผู้ใช้เห็น)
+    # ให้โมเดลตรวจ (พังก็ไม่โชว์ error ดิบ)
     try:
         fruits = detect(img)
     except Exception:
@@ -375,7 +367,7 @@ def scan():
     photo = to_base64(draw_boxes(img, fruits), max_size=1200)
     rgb, small_size = color_mean(img)
 
-    # รายการในหน้าเว็บ : ลูกเน่าขึ้นก่อน (sort แบบนี้ลำดับเดิมในกลุ่มเดียวกันไม่เปลี่ยน)
+    # ลูกเน่าขึ้นก่อน
     fruits.sort(key=list_order)
     more = len(fruits) - MAX_FRUITS
     if more < 0:
@@ -387,8 +379,7 @@ def scan():
 
 
 # ===== สแกนสด =====
-# หน้าเว็บส่งภาพจากกล้องมาทีละภาพ (ย่อแล้ว) ตอบกลับเป็นตำแหน่งกรอบ + สด/เน่า ให้หน้าเว็บวาดทับภาพสดเอง
-# ไม่เก็บรูป ไม่วาดรูปส่งกลับ ส่งแค่ตัวเลข จะได้เร็ว
+# รับภาพจากกล้องทีละภาพ ตอบเป็นตัวเลข (ตำแหน่งกรอบ + สด/เน่า) ให้หน้าเว็บวาดเอง ไม่เก็บรูป
 @app.route("/live", methods=["POST"])
 def live():
     file = request.files.get("frame")
@@ -404,7 +395,7 @@ def live():
     except Exception:
         return jsonify({"ok": False, "boxes": []})
 
-    # ตำแหน่งกรอบเป็นสัดส่วน 0-1 ของรูป หน้าเว็บจะคูณกับขนาดภาพบนจอเอง
+    # ตำแหน่งกรอบเป็นสัดส่วน 0-1
     w, h = img.size
     boxes = []
     for f in fruits:
@@ -422,28 +413,27 @@ def too_large(e):
     return render_template("index.html", error="ไฟล์ใหญ่เกิน " + str(MAX_MB) + " MB ลองใช้รูปที่เล็กลง"), 413
 
 
-# พิมพ์ลิงก์ผิด หรือเปิดหน้าที่ไม่มี : ไม่โชว์หน้า Not Found ภาษาอังกฤษ พากลับหน้าหลักเลย
+# ลิงก์ผิด : พากลับหน้าหลัก
 @app.errorhandler(404)
 @app.errorhandler(405)
 def not_found(e):
     return redirect(url_for("home"))
 
 
-# โค้ดพังแบบไม่คาดคิด : บอกเป็นภาษาไทย ไม่โชว์ error ดิบ
+# error ไม่คาดคิด : บอกเป็นภาษาไทย
 @app.errorhandler(500)
 def server_error(e):
     return render_template("index.html", error="เว็บมีปัญหาชั่วคราว ลองใหม่อีกครั้งนะ"), 500
 
 
 if __name__ == "__main__":
-    # โหลดโมเดลรอไว้ก่อน แล้วลองตรวจรูปว่าง 1 ครั้ง (รอบแรกของ YOLO ช้าเสมอ)
-    # คนแรกที่ส่งรูปจะได้ไม่ต้องรอนาน ถ้ายังไม่มีไฟล์โมเดลก็ข้ามไป
+    # โหลดโมเดล + ตรวจรูปว่าง 1 ครั้ง (รอบแรกช้า คนแรกจะได้ไม่ต้องรอ)
     if os.path.exists(MODEL_FILE):
         try:
             load_model().predict(Image.new("RGB", (IMG_SIZE, IMG_SIZE), "white"), imgsz=IMG_SIZE, verbose=False)
         except Exception:
             pass
 
-    # threaded=False : ตรวจทีละรูป มีคนส่งรูปพร้อมกัน 2 คน คนที่ 2 จะรอคิว โมเดลจะไม่ชนกัน
-    # เปิดเว็บที่ port 7860 (เปลี่ยนได้ด้วยตัวแปร PORT)
+    # threaded=False : ตรวจทีละรูป โมเดลไม่ชนกัน
+    # port 7860 (เปลี่ยนได้ด้วยตัวแปร PORT)
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 7860)), debug=False, threaded=False)

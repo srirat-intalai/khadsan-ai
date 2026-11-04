@@ -1,32 +1,12 @@
-# เอารูปชุดใหม่ที่ตีกรอบแล้ว (export จาก Roboflow แบบ YOLOv8) มาเตรียมไว้เทรนเพิ่ม หรือทำเป็นข้อสอบใหม่
-#
-# ทำไมต้องมีไฟล์นี้ : เลขคลาสในไฟล์ป้ายของชุดใหม่ มักไม่ตรงกับเลขคลาสของโมเดลเรา
-#   เช่น ชุดใหม่มีแค่ส้ม Orange_Bad จะกลายเป็นเลข 0 ซึ่งในโมเดลเรา เลข 0 คือ Apple_Bad
-#   ถ้าเอาไปเทรนตรงๆ โมเดลจะเรียนผิด ไฟล์นี้เลยอ่านชื่อคลาสจาก data.yaml แล้วเปลี่ยนเลขให้ตรงกับของเรา
-#
-# ชื่อคลาสที่ใช้ได้ (ตัวใหญ่ตัวเล็กต้องตรง) คลาสอื่นจะถูกตัดทิ้ง
-#   Apple_Bad Apple_Good Banana_Bad Banana_Good Lime_Bad Lime_Good
-#   Orange_Bad Orange_Good Pomegranate_Bad Pomegranate_Good
-#
-# วิธีรัน (ในโฟลเดอร์ train):
-#   python add_new_data.py --src โฟลเดอร์ที่แตกzipจากRoboflow --out datasets/kaggle_boxes
-#   --out จะเอารูปใหม่ไปต่อท้ายโฟลเดอร์เดิม รูปเดิมในโฟลเดอร์ไม่หาย
-#   แล้ว zip โฟลเดอร์ --out เป็น KaggleBoxes.zip ใช้กับ train_round2.ipynb / train_round3.ipynb ได้เลย (ดู docs/train-model.md)
-#
-# ตัวเลือกเพิ่ม (รอบ 3)
-#   --rename "rotten_orange=Orange_Bad,fresh_orange=Orange_Good"
-#       ชุดของคนอื่นตั้งชื่อคลาสไม่เหมือนเรา บอกตรงนี้ว่าชื่อไหนคือคลาสไหนของเรา ไม่ต้องไปแก้ data.yaml เอง
-#   --avoid "datasets/data_5fruits/val/images,datasets/external_test"
-#       ข้ามรูปที่หน้าตาคล้ายรูปในโฟลเดอร์พวกนี้ (กันข้อสอบรั่วเข้าชุดเทรน) ใส่ได้หลายโฟลเดอร์ คั่นด้วย ,
-#   --per-class 150
-#       เอาคลาสละไม่เกินกี่รูป (สุ่มแบบล็อก seed ได้รูปเดิมทุกครั้ง) ใช้ตอนทำข้อสอบจากชุดที่ใหญ่มาก
-#   --prefix lq_
-#       ขึ้นต้นชื่อไฟล์ จะได้รู้ว่ารูปมาจากชุดไหน (ไม่ใส่ = new_)
-#
-# สิ่งที่ไฟล์นี้ทำให้เอง
-#   - ป้ายแบบเส้นรอบรูป (polygon) แปลงเป็นกรอบสี่เหลี่ยม
-#   - Roboflow ชอบทำรูปเดิมเป็นหลายเวอร์ชัน (หมุน กลับด้าน) เก็บไว้แค่รูปเดียวต่อรูปต้นฉบับ
-#   - รูปในชุดเดียวกันที่หน้าตาเกือบเหมือนกัน เก็บไว้รูปเดียว
+# เอารูปที่ตีกรอบแล้ว (export จาก Roboflow แบบ YOLOv8) มาเป็นรูปเทรนเพิ่มหรือข้อสอบ
+# เลขคลาสของชุดอื่นมักไม่ตรงกับของเรา (เช่น ชุดที่มีแค่ส้ม Orange_Bad = 0 แต่ของเรา 0 = Apple_Bad)
+#   ไฟล์นี้อ่านชื่อคลาสจาก data.yaml แล้วเปลี่ยนเลขให้ตรง คลาสที่ไม่ใช่ 10 คลาสของเราตัดทิ้ง
+# วิธีรัน (ในโฟลเดอร์ train) : python add_new_data.py --src โฟลเดอร์จากRoboflow --out datasets/kaggle_boxes
+#   --out ต่อท้ายโฟลเดอร์เดิม รูปเดิมไม่หาย
+#   --rename "rotten_orange=Orange_Bad" = ชื่อคลาสของชุดนั้น -> ของเรา
+#   --avoid "โฟลเดอร์1,โฟลเดอร์2" = ข้ามรูปที่คล้ายรูปในโฟลเดอร์พวกนี้ (กันข้อสอบรั่ว)
+#   --per-class 150 = คลาสละไม่เกินกี่รูป / --prefix lq_ = ขึ้นต้นชื่อไฟล์ (ไม่ใส่ = new_)
+# ทำให้เอง : polygon -> กรอบสี่เหลี่ยม / รูปที่ Roboflow ทำซ้ำหลายเวอร์ชันหรือเกือบเหมือนกัน เก็บรูปเดียว
 
 import os
 import sys
@@ -41,9 +21,9 @@ AVOID_DIRS = []       # โฟลเดอร์รูปที่ห้าม�
 PER_CLASS = 0         # 0 = ไม่จำกัด
 PREFIX = "new_"
 SEED = 42
-SAME_PICTURE = 6      # ลายนิ้วมือรูปต่างกันไม่เกิน 6 จุด (จาก 64) = รูปเกือบเหมือนกัน (ค่าเดียวกับ prepare_data.py)
+SAME_PICTURE = 6      # ต่างกันไม่เกิน 6 จุด (จาก 64) = รูปเกือบเหมือนกัน
 
-# 10 คลาสของเรา (ลำดับนี้ = เลขคลาสที่โมเดลตอบ ต้องตรงกับ prepare_data.py ห้ามสลับ)
+# 10 คลาสของเรา (ลำดับ = เลขคลาส ต้องตรงกับ prepare_data.py)
 NEW_NAMES = ["Apple_Bad", "Apple_Good", "Banana_Bad", "Banana_Good", "Lime_Bad", "Lime_Good",
              "Orange_Bad", "Orange_Good", "Pomegranate_Bad", "Pomegranate_Good"]
 
@@ -74,10 +54,7 @@ for n in RENAME.values():
         sys.exit(1)
 
 
-# อ่านชื่อคลาสจาก data.yaml ได้ 2 แบบ
-#   names: ['Apple_Bad', 'Apple_Good']        (บรรทัดเดียว)
-#   names:                                    (หลายบรรทัด)
-#     - Apple_Bad        หรือ     0: Apple_Bad
+# อ่านชื่อคลาสจาก data.yaml ได้ทั้งแบบ names: [...] และแบบหลายบรรทัด (- ชื่อ / 0: ชื่อ)
 def read_names(yaml_file):
     names = []
     reading = False
@@ -101,7 +78,7 @@ def read_names(yaml_file):
     return names
 
 
-# ลายนิ้วมือรูป (แบบเดียวกับ prepare_data.py) : ย่อเหลือ 9x8 ขาวดำ ได้เลข 0/1 มา 64 ตัว
+# ลายนิ้วมือรูป (แบบเดียวกับ prepare_data.py)
 def picture_print(img):
     small = img.convert("L").resize((9, 8))
     px = list(small.getdata())
@@ -126,7 +103,7 @@ def is_same_as(p, prints):
     return False
 
 
-# ป้าย 1 บรรทัด -> กรอบ "x y w h" (ถ้าเป็นเส้นรอบรูป ใช้จุดซ้ายสุด ขวาสุด บนสุด ล่างสุด มาทำกรอบ)
+# ป้าย 1 บรรทัด -> กรอบ x y w h (polygon ใช้จุดซ้าย/ขวา/บน/ล่างสุด)
 def to_box(numbers):
     if len(numbers) == 4:
         return numbers
@@ -156,7 +133,7 @@ for d in AVOID_DIRS:
 if len(AVOID_DIRS) > 0:
     print("ลายนิ้วมือรูปที่ห้ามซ้ำ", len(avoid_prints), "รูป จาก", AVOID_DIRS)
 
-# อ่านรูปทั้งหมดก่อน แล้วค่อยสุ่มลำดับ (ล็อก seed) จะได้เลือกรูปเหมือนเดิมทุกครั้ง
+# อ่านรูปทั้งหมดแล้วสุ่มลำดับ (ล็อก seed ได้รูปเดิมทุกครั้ง)
 items = []
 for part in ["train", "valid", "test"]:
     img_folder = os.path.join(SRC_DIR, part, "images")
@@ -181,18 +158,18 @@ image_count = [0] * len(NEW_NAMES)  # รูปต่อคลาส (ใช้�
 seen_source = []                    # ชื่อรูปต้นฉบับที่เอาไปแล้ว
 kept_prints = []
 
-# รันซ้ำด้วย --prefix เดิม ให้เลขต่อจากไฟล์ที่มีอยู่ ไฟล์เก่าจะได้ไม่โดนทับ
+# รันซ้ำด้วย --prefix เดิม เลขจะต่อจากไฟล์เดิม ไม่ทับ
 start = 0
 for f in os.listdir(os.path.join(OUT_DIR, "images")):
     if f.startswith(PREFIX):
         start = start + 1
 
-# Roboflow แบ่งไว้เป็น train / valid / test เราไม่ใช้การแบ่งของเขา เอามารวมกันหมด
+# รวม train/valid/test ของ Roboflow (ไม่ใช้การแบ่งของเขา)
 for part, f in items:
     img_path = os.path.join(SRC_DIR, part, "images", f)
     label_file = os.path.join(SRC_DIR, part, "labels", os.path.splitext(f)[0] + ".txt")
 
-    # รูปที่ Roboflow ทำเพิ่มจากรูปเดิม ชื่อจะเป็น "ชื่อเดิม_jpg.rf.xxxx.jpg" เก็บแค่รูปแรกของแต่ละชื่อเดิม
+    # รูปที่ Roboflow ทำเพิ่มชื่อ ชื่อเดิม_jpg.rf.xxxx.jpg เก็บแค่รูปแรก
     source = f.split(".rf.")[0]
     if source in seen_source:
         copy_version = copy_version + 1
