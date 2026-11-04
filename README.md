@@ -165,6 +165,9 @@
   แปลว่าโมเดลจำทับทิมได้แค่แบบที่เคยเห็นในชุดเทรน ต้องเพิ่มรูปทับทิมจากแหล่งอื่นถึงจะแก้ได้
 - ข้อสอบ same_source_test ลูกเน่าที่โมเดลบอกว่าสด (นับจาก Confusion Matrix) ยังเยอะทุกตัว : 8 = 218, 10-12 = 191 / 210 / 163 ส่วนใหญ่เป็นมะนาวเน่า
 - ทั้ง 3 seed ไม่ตีกรอบรูปคนกับรูปรถบัส
+- **ข้อสอบรูปจากเว็บที่ทีมหามาเอง (444 รูป ไม่ได้มาจาก dataset ใดๆ)** : แบบ 11 ทายถูกทั้งชนิดและสด/เน่า 42.8% (แบบ 8 = 37.4%)
+  กล้วยกับส้มได้ดี (88–95%) แต่มะนาวเน่าถูก 4/65 (ส่วนใหญ่โดนทายเป็นส้ม) และทับทิมเน่าถูก 6/97
+  แปลว่าโมเดลยังใช้กับรูปจริงทั่วไปได้ไม่ดี โดยเฉพาะผลไม้เน่าที่สีเปลี่ยนไปจนดูเป็นผลไม้อื่น รายละเอียดใน `round3/friend_test_summary.md`
 - โค้ดเลือก 11 ให้อัตโนมัติ (Val mAP50 สูงสุด) **ตอนนี้เว็บยังใช้ 8 อยู่** (11 ดีกว่าเล็กน้อยตามเกณฑ์ ทีมยังไม่ได้ตัดสินใจเปลี่ยน)
 
 **ไฟล์ผลการทดลองอยู่ใน `results/` (รอบ 1), `results/round2/` (รอบ 2) และ `results/round3/` (รอบ 3)** หยิบไปใส่รายงานกับสไลด์ได้เลย
@@ -175,7 +178,7 @@
 - `compare_*.png` กราฟเทียบแต่ละเรื่อง เช่น optimizer, learning rate, batch, weight decay, scratch vs pretrained และ `compare_all.png` ที่รวมทุกตัว · รอบ 2 มี `round2/compare_more_data.png` (เพิ่มรูป) กับ `round2/compare_rmsprop_lr.png` (แก้ RMSProp)
 - `curves_*.png` กราฟ Loss และคะแนนทีละ epoch ของแต่ละการทดลอง
 - `versions.txt` รุ่น ultralytics กับ torch ที่ใช้เทรน
-- รอบ 3 : `round3/seed_summary.md` (3 seed แกว่งแค่ไหน) / `round3/new_tests.csv` (ข้อสอบใหม่ทุกโมเดล คอลัมน์ `rotten_called_fresh` = ลูกเน่าที่บอกว่าสด) / `round3/per_class_<โมเดล>_<ข้อสอบ>.csv` / `round3/per_class_11.csv` กับ `round3/confusion_matrix_11.png` / `round3/compare_seeds.png`
+- รอบ 3 : `round3/seed_summary.md` (3 seed แกว่งแค่ไหน) / `round3/new_tests.csv` (ข้อสอบใหม่ทุกโมเดล คอลัมน์ `rotten_called_fresh` = ลูกเน่าที่บอกว่าสด) / `round3/per_class_<โมเดล>_<ข้อสอบ>.csv` / `round3/per_class_11.csv` กับ `round3/confusion_matrix_11.png` / `round3/compare_seeds.png` / `round3/friend_test_summary.md` กับ `friend_test_*.csv` (ข้อสอบรูปนอก dataset)
 
 
 ## โครงสร้างไฟล์

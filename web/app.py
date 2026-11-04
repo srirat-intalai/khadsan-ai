@@ -320,6 +320,10 @@ def count_states(fruits):
             summary["unsure_nums"].append("#" + str(f["num"]))
         if f["check"]:
             summary["check_nums"].append("#" + str(f["num"]))
+    # เน่ากี่ % ของทั้งถาด (ใช้ตัดสินว่าจะรับล็อตนี้ไหม) ปัดเป็นจำนวนเต็ม
+    summary["bad_percent"] = 0
+    if summary["total"] > 0:
+        summary["bad_percent"] = round(summary["bad"] * 100 / summary["total"])
     return summary
 
 

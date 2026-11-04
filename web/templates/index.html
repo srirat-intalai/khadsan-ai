@@ -225,7 +225,7 @@
                     {% if summary.total == 0 %}
                     <div class="tag-row"><span class="tag-key">ผล</span><span class="tag-line">ไม่พบผลไม้ 5 ชนิดที่รู้จัก</span></div>
                     {% else %}
-                    <div class="tag-row"><span class="tag-key">พบทั้งหมด</span><span class="tag-line">{{ summary.total }} ลูก</span></div>
+                    <div class="tag-row"><span class="tag-key">พบทั้งหมด</span><span class="tag-line">{{ summary.total }} ลูก{% if summary.bad > 0 %} · <span class="nowrap">เน่า {{ summary.bad_percent }}%</span>{% endif %}</span></div>
                     <div class="tag-row"><span class="tag-key">คัดออก</span>{% if summary.bad_nums %}<span class="tag-line tag-bad">{{ summary.bad_nums|join(", ") }}</span>{% else %}<span class="tag-line">–</span>{% endif %}</div>
                     <div class="tag-row"><span class="tag-key">ตรวจซ้ำ</span><span class="tag-line">{% if summary.unsure_nums %}{{ summary.unsure_nums|join(", ") }}{% else %}–{% endif %}</span></div>
                     {# ทุกลูกควรดูอีกที : ถ้าตราเป็น "สด N ลูก หยิบดูอีกที" อยู่แล้ว แถวนี้บอกแค่จำนวน / ถ้าตราเป็นเรื่องอื่น (คัดออก ตรวจซ้ำ) ค่อยบอกในแถวนี้ #}
@@ -238,7 +238,7 @@
             <div class="tag-warn">ลองถ่ายใหม่ให้เห็นผลไม้ทั้งลูก แสงพอ ดูวิธีใน "AI ตัดสินจากอะไร"</div>
             {% endif %}
             {# โปรแกรมอ่านหน้าจอจะอ่านสรุปนี้ก่อนรายการ #}
-            <div class="sr-only" id="summary-text">ผลตรวจ: พบผลไม้ {{ summary.total }} ลูก คัดออก {{ summary.bad }} ลูก ตรวจซ้ำ {{ summary.unsure }} ลูก สด {{ summary.good }} ลูก{% if summary.check_nums %} ในนี้ควรดูอีกที {{ summary.check_nums|length }} ลูก{% endif %}</div>
+            <div class="sr-only" id="summary-text">ผลตรวจ: พบผลไม้ {{ summary.total }} ลูก คัดออก {{ summary.bad }} ลูก ({{ summary.bad_percent }}%) ตรวจซ้ำ {{ summary.unsure }} ลูก สด {{ summary.good }} ลูก{% if summary.check_nums %} ในนี้ควรดูอีกที {{ summary.check_nums|length }} ลูก{% endif %}</div>
             {# มือถือ : ทางลัดลงไปสแกนรูปต่อไป ไม่ต้องเลื่อนผ่านรายการยาวๆ #}
             <a class="jump-next" href="#next">สแกนรูปต่อไป ↓</a>
         </div>

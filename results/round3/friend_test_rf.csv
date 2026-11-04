@@ -1,0 +1,17 @@
+model,conf,class,images,correct,accuracy
+8,0.25,Apple_Bad,7,3,0.429
+8,0.25,Apple_Good,112,97,0.866
+8,0.25,Banana_Bad,140,119,0.85
+8,0.25,Orange_Good,56,35,0.625
+8,0.4,Apple_Bad,7,3,0.429
+8,0.4,Apple_Good,112,96,0.857
+8,0.4,Banana_Bad,140,110,0.786
+8,0.4,Orange_Good,56,33,0.589
+11,0.25,Apple_Bad,7,2,0.286
+11,0.25,Apple_Good,112,84,0.75
+11,0.25,Banana_Bad,140,117,0.836
+11,0.25,Orange_Good,56,31,0.554
+11,0.4,Apple_Bad,7,2,0.286
+11,0.4,Apple_Good,112,82,0.732
+11,0.4,Banana_Bad,140,106,0.757
+11,0.4,Orange_Good,56,29,0.518
