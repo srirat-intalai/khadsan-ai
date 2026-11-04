@@ -303,10 +303,10 @@ button.pill.cam-shot {background: var(--olive); color: var(--paper) !important; 
 /* ===== สองคอลัมน์ ซ้าย = ใส่รูป / ขวา = กรอบสแกน (ตอนยังไม่มีผล) ===== */
 .columns {display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start;}
 
-/* ===== ตอนมีผลแล้ว : ซ้าย = ป้ายตรวจ + รายการ / ขวา = รูปตีกรอบ + สแกนรูปต่อไป + ข้อมูลสำหรับอาจารย์ ===== */
+/* ===== ตอนมีผลแล้ว : ซ้าย = ป้ายตรวจ + รายการ / ขวา = รูปตีกรอบ + สแกนรูปต่อไป + ข้อมูลทางเทคนิค ===== */
 .result-layout {display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start;}
 
-/* การ์ดข้อมูลสำหรับอาจารย์ พับไว้ กดหัวข้อเพื่อเปิด */
+/* การ์ดข้อมูลทางเทคนิค พับไว้ กดหัวข้อเพื่อเปิด */
 details.card > summary {cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; min-height: 44px;}
 details.card > summary::-webkit-details-marker {display: none;}
 details.card > summary::after {content: "+"; margin-left: auto; font-family: 'Mali', cursive; font-size: 24px; color: var(--muted);}
@@ -454,7 +454,7 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
     /* จอเล็ก คอลัมน์ซ้ายขวาเรียงลงมาเป็นแถวเดียว */
     .columns {grid-template-columns: 1fr; gap: 0;}
     /* ตอนมีผล: ยกการ์ดทุกใบออกมาเรียงใหม่ ให้รูปตีกรอบอยู่ติดป้ายตรวจ รายการอยู่ใต้รูป
-       ป้ายตรวจ -> รูปตีกรอบ -> รายการทีละลูก -> AI ตัดสินจากอะไร -> สแกนรูปต่อไป -> ข้อมูลสำหรับอาจารย์ */
+       ป้ายตรวจ -> รูปตีกรอบ -> รายการทีละลูก -> AI ตัดสินจากอะไร -> สแกนรูปต่อไป -> ข้อมูลทางเทคนิค */
     .result-layout {display: flex; flex-direction: column; gap: 0; align-items: stretch;}
     .result-col {display: contents;}
     .r-tag {order: 1;}
