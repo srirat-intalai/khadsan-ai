@@ -6,10 +6,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>KhadSan AI</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍎</text></svg>">
-<!-- ฟอนต์ : Anuphan เนื้อหา / Mitr หัวข้อ / Mali ลายมือ -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600&family=Mali:wght@400;500;600&family=Mitr:wght@500;600&display=swap" rel="stylesheet">
+<!-- ฟอนต์ : Anuphan เนื้อหา / Mitr หัวข้อ / Mali ลายมือ (เก็บไว้ในเว็บ ไม่ต้องพึ่งเน็ตวันเดโม) -->
+<link rel="stylesheet" href="{{ url_for('static', filename='fonts/fonts.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 {% if summary %}
 <!-- มีผลแล้ว : ซ่อนผลไว้ให้ scan.js เล่นติ๊กขั้นตอนก่อน (ตั้งลดการเคลื่อนไหวจะเห็นผลทันที) -->
@@ -217,7 +215,7 @@
                     {% if summary.total == 0 %}
                     <div class="tag-row"><span class="tag-key">ผล</span><span class="tag-line">ไม่พบผลไม้ 5 ชนิดที่รู้จัก</span></div>
                     {% else %}
-                    <div class="tag-row"><span class="tag-key">พบทั้งหมด</span><span class="tag-line">{{ summary.total }} ลูก{% if summary.bad > 0 %} · <span class="nowrap">เน่า {{ summary.bad_percent }}%</span>{% endif %}</span></div>
+                    <div class="tag-row"><span class="tag-key">AI เจอ</span><span class="tag-line">{{ summary.total }} ลูก{% if summary.bad > 0 %} · <span class="nowrap">เน่า {{ summary.bad_percent }}%</span>{% endif %}</span></div>
                     <div class="tag-row"><span class="tag-key">คัดออก</span>{% if summary.bad_nums %}<span class="tag-line tag-bad">{{ summary.bad_nums|join(", ") }}</span>{% else %}<span class="tag-line">–</span>{% endif %}</div>
                     <div class="tag-row"><span class="tag-key">ตรวจซ้ำ</span><span class="tag-line">{% if summary.unsure_nums %}{{ summary.unsure_nums|join(", ") }}{% else %}–{% endif %}</span></div>
                     {# ทุกลูกควรดูอีกที : ตราบอกแล้ว แถวนี้บอกแค่จำนวน / ตราเป็นเรื่องอื่นค่อยบอกในแถวนี้ #}
@@ -228,6 +226,8 @@
             </div></div>
             {% if summary.total == 0 %}
             <div class="tag-warn">ลองถ่ายใหม่ให้เห็นผลไม้ทั้งลูก แสงพอ ดูวิธีใน "AI ตัดสินจากอะไร"</div>
+            {% else %}
+            <div class="tag-warn">นับเฉพาะลูกที่มีกรอบในรูป ลูกที่ไม่มีกรอบ AI ไม่ได้ตรวจ ให้คนดูเอง (ผลไม้เยอะหรือซ้อนกัน ลองแยกกองแล้วถ่ายใหม่)</div>
             {% endif %}
             {# โปรแกรมอ่านหน้าจอจะอ่านสรุปนี้ก่อนรายการ #}
             <div class="sr-only" id="summary-text">ผลตรวจ: พบผลไม้ {{ summary.total }} ลูก คัดออก {{ summary.bad }} ลูก ({{ summary.bad_percent }}%) ตรวจซ้ำ {{ summary.unsure }} ลูก สด {{ summary.good }} ลูก{% if summary.check_nums %} ในนี้ควรดูอีกที {{ summary.check_nums|length }} ลูก{% endif %}</div>

@@ -275,16 +275,6 @@ input.addEventListener("click", function () {
 // เล่นเมื่อ html มี class "play" (มีผลตรวจ)
 // ครั้งแรกเล่นช้าๆ ~5 วิ ให้เห็นว่า AI ทำอะไร / ครั้งต่อไปไม่ถึง 1 วิ
 var stepTimes = [800, 2000, 2200];
-var seenBefore = false;
-try {
-    seenBefore = localStorage.getItem("khadsan-seen-steps") == "yes";
-    localStorage.setItem("khadsan-seen-steps", "yes");
-} catch (e) {
-    // เบราว์เซอร์ไม่ให้จำ (โหมดไม่ระบุตัวตน) ก็เล่นเต็ม
-}
-if (seenBefore) {
-    stepTimes = [200, 250, 250];
-}
 var stepIndex = 0;
 var timer = null;
 var skipRow = document.querySelector(".skip-row");
@@ -323,6 +313,15 @@ function showResult() {
 }
 
 if (page.classList.contains("play")) {
+    // จำว่าเคยดูแล้ว เฉพาะตอนได้ดูจริง (ถ้าจำตั้งแต่หน้าแรก ผลครั้งแรกจะเล่นแบบเร็วไปเลย)
+    try {
+        if (localStorage.getItem("khadsan-seen-steps") == "yes") {
+            stepTimes = [200, 250, 250];
+        }
+        localStorage.setItem("khadsan-seen-steps", "yes");
+    } catch (e) {
+        // เบราว์เซอร์ไม่ให้จำ (โหมดไม่ระบุตัวตน) ก็เล่นเต็ม
+    }
     if (skipRow) {
         skipRow.hidden = false;
         skipRow.querySelector(".skip-anim").addEventListener("click", showResult);
