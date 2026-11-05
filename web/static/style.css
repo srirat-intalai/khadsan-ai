@@ -415,6 +415,19 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 
 
 /* ===== จอเล็ก (มือถือ) ===== */
+/* แท็บเล็ตและมือถือ : หน้าผลเรียงเป็นคอลัมน์เดียว (2 คอลัมน์แคบเกิน ข้อความในรายการตัดคำ)
+   ป้ายตรวจ -> รูป -> รายการ -> AI ตัดสินจากอะไร -> สแกนต่อ -> ข้อมูลทางเทคนิค */
+@media (max-width: 960px) {
+    .result-layout {display: flex; flex-direction: column; gap: 0; align-items: stretch;}
+    .result-col {display: contents;}
+    .r-tag {order: 1;}
+    .r-photo {order: 2;}
+    .r-list {order: 3;}
+    .r-why {order: 5;}
+    .r-next {order: 6;}
+    .r-data {order: 7;}
+}
+
 @media (max-width: 700px) {
     .nav {margin-bottom: 24px;}
     .hero {gap: 24px; margin-bottom: 40px;}
@@ -444,15 +457,6 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
     .section-title {font-size: 28px;}
     /* คอลัมน์ซ้ายขวาเรียงเป็นแถวเดียว */
     .columns {grid-template-columns: 1fr; gap: 0;}
-    /* มีผล : เรียงใหม่ ป้ายตรวจ -> รูป -> รายการ -> AI ตัดสินจากอะไร -> สแกนต่อ -> ข้อมูลทางเทคนิค */
-    .result-layout {display: flex; flex-direction: column; gap: 0; align-items: stretch;}
-    .result-col {display: contents;}
-    .r-tag {order: 1;}
-    .r-photo {order: 2;}
-    .r-list {order: 3;}
-    .r-why {order: 5;}
-    .r-next {order: 6;}
-    .r-data {order: 7;}
     .jump-next {display: inline-flex; align-items: center; min-height: 44px; margin-top: 12px; padding: 8px 20px; border: 1.5px solid var(--ink); border-radius: 20px; color: var(--ink); text-decoration: none; font-weight: 500;}
     .page {padding: 16px 16px 0 16px;}
     .card {padding: 20px;}
