@@ -1,5 +1,5 @@
 // JavaScript ของหน้าเว็บ KhadSan AI
-// ทำ 6 อย่าง : 1) โชว์รูปตัวอย่าง 2) เตือนไฟล์ใหญ่ 3) ปุ่มกำลังตรวจ (กดซ้ำไม่ได้)
+// ทำ 6 อย่าง : 1) โชว์รูปตัวอย่าง (+ ลากรูปมาวาง / วางจากคลิปบอร์ด) 2) เตือนไฟล์ใหญ่ 3) ปุ่มกำลังตรวจ (กดซ้ำไม่ได้)
 //   4) เปิดกล้อง/ถ่ายรูป 5) ติ๊กขั้นตอนก่อนโชว์ผล 6) สแกนสด
 // ปิด JavaScript เว็บยังส่งรูปและเห็นผลได้ปกติ
 
@@ -75,6 +75,57 @@ input.addEventListener("change", function () {
     preview.hidden = false;
     if (stageSub) {
         stageSub.textContent = "รูปที่เลือก · กดตรวจได้เลย";
+    }
+});
+
+
+// ----- 1.5) ลากรูปมาวาง / วางรูปจากคลิปบอร์ด (Ctrl+V / ⌘V) -----
+// ใส่ไฟล์เข้าช่องเลือกรูปเหมือนกดเลือกเอง แล้วให้ข้อ 1) ทำรูปตัวอย่าง
+function putFile(file) {
+    if (!file || file.type.indexOf("image/") != 0) {
+        warn.textContent = "ใช้ได้เฉพาะไฟล์รูป jpg / png / webp";
+        warn.hidden = false;
+        return;
+    }
+    try {
+        var box = new DataTransfer();
+        box.items.add(file);
+        input.files = box.files;
+        input.dispatchEvent(new Event("change"));
+        button.focus({ preventScroll: true });
+        live.textContent = "ใส่รูปแล้ว กดตรวจได้เลย";
+    } catch (e) {
+        // เบราว์เซอร์เก่าใส่ไฟล์เองไม่ได้ ให้กดเลือกรูปแทน
+        warn.textContent = "เบราว์เซอร์นี้ลากรูปมาวางไม่ได้ ใช้ปุ่มเลือกรูปจากเครื่องแทนนะ";
+        warn.hidden = false;
+    }
+}
+
+// ลากไฟล์มาเหนือช่อง : ขอบเปลี่ยนเป็นสีเขียว
+drop.addEventListener("dragover", function (event) {
+    event.preventDefault();
+    drop.classList.add("drag-over");
+});
+drop.addEventListener("dragleave", function () {
+    drop.classList.remove("drag-over");
+});
+drop.addEventListener("drop", function (event) {
+    event.preventDefault();
+    drop.classList.remove("drag-over");
+    if (event.dataTransfer && event.dataTransfer.files.length > 0) {
+        putFile(event.dataTransfer.files[0]);
+    }
+});
+
+// วางรูปที่ก๊อปไว้ (ไม่ยุ่งตอนกำลังพิมพ์ในช่องจำนวนลูก)
+document.addEventListener("paste", function (event) {
+    if (event.target && event.target.tagName == "INPUT" && event.target.type != "file") {
+        return;
+    }
+    var items = event.clipboardData ? event.clipboardData.files : [];
+    if (items.length > 0) {
+        event.preventDefault();
+        putFile(items[0]);
     }
 });
 
@@ -352,7 +403,7 @@ var cssColors = getComputedStyle(page);
 var liveColors = {
     good: cssColors.getPropertyValue("--olive").trim(),
     bad: cssColors.getPropertyValue("--rotten").trim(),
-    unsure: cssColors.getPropertyValue("--muted").trim()
+    unsure: cssColors.getPropertyValue("--amber").trim()
 };
 var paperColor = cssColors.getPropertyValue("--paper").trim();
 var liveWords = { good: "สด", bad: "เน่า", unsure: "ให้คนดู" };

@@ -21,6 +21,7 @@ CONF_MIN = 0.40         # มั่นใจต่ำกว่านี้ไม
 LOW_CONF = 60           # มั่นใจต่ำกว่านี้ (%) = "ให้คนดู"
 HIGH_CONF = 85          # ว่าสดต้องมั่นใจตั้งแต่นี้ (%) ไม่ถึง = "ให้คนดู"
 MAX_FRUITS = 30         # โชว์รายการไม่เกินกี่ลูก
+MAX_COUNT = 300         # ช่อง "ในถาดมีกี่ลูก" รับได้ไม่เกินนี้
 SAME_FRUIT = 0.5        # กรอบทับกันเกินครึ่ง = ลูกเดียวกัน
 
 # ชื่อไทยของผลไม้ 5 ชนิด
@@ -38,7 +39,7 @@ if os.path.exists(CLASS_FILE):
 # สีกรอบ ต้องตรงกับสีใน static/style.css
 COLOR_GOOD = (79, 104, 21)      # เขียวมะกอก = สด
 COLOR_BAD = (166, 58, 18)       # สีอิฐ = เน่า
-COLOR_UNSURE = (94, 84, 75)     # หมึกจาง = ให้คนดู
+COLOR_UNSURE = (138, 97, 0)     # เหลืองอำพัน = ให้คนดู (มีงานต้องทำ ไม่ใช้สีเทา)
 COLOR_PAPER = (253, 251, 249)   # สีครีม ขอบกรอบและตัวเลข
 
 
@@ -70,6 +71,7 @@ app.config["MAX_CONTENT_LENGTH"] = MAX_MB * 1024 * 1024   # ใหญ่กว�
 app.jinja_env.globals["icons"] = ICONS
 app.jinja_env.globals["thai_names"] = list(THAI_NAMES.values())
 app.jinja_env.globals["max_mb"] = MAX_MB
+app.jinja_env.globals["max_count"] = MAX_COUNT
 app.jinja_env.globals["img_size"] = IMG_SIZE
 app.jinja_env.globals["model_ready"] = os.path.exists(MODEL_FILE)   # ใส่ไฟล์โมเดลทีหลัง ต้องเปิดเว็บใหม่
 
@@ -316,14 +318,38 @@ def count_states(fruits):
     for f in fruits:
         summary[f["state"]] = summary[f["state"]] + 1
         if f["state"] == "bad":
-            summary["bad_nums"].append("#" + str(f["num"]))
+            summary["bad_nums"].append(str(f["num"]))
         if f["state"] == "unsure":
-            summary["unsure_nums"].append("#" + str(f["num"]))
+            summary["unsure_nums"].append(str(f["num"]))
     # เน่ากี่ % ของทั้งถาด
     summary["bad_percent"] = 0
     if summary["total"] > 0:
         summary["bad_percent"] = round(summary["bad"] * 100 / summary["total"])
     return summary
+
+
+# จำนวนลูกที่คนกรอกเอง (ไม่บังคับ) : เทียบกับจำนวนกรอบ บอกว่าตรวจครบไหม
+# ไม่กรอก / กรอกผิด = None (ทำงานเหมือนเดิม)
+def read_count(text):
+    try:
+        count = int(text)
+    except (TypeError, ValueError):
+        return None
+    if count < 1 or count > MAX_COUNT:
+        return None
+    return count
+
+
+def compare_count(summary, count):
+    summary["expected"] = count
+    summary["missing"] = 0     # AI ตีกรอบไม่ครบกี่ลูก
+    summary["extra"] = 0       # AI ตีกรอบเกินกี่กรอบ (อาจซ้อนลูกเดียวกัน)
+    if count is None:
+        return
+    if summary["total"] < count:
+        summary["missing"] = count - summary["total"]
+    if summary["total"] > count:
+        summary["extra"] = summary["total"] - count
 
 
 # เรียงรายการ : คัดออก → ให้คนดู → สด (เลขลูกไม่เปลี่ยน)
@@ -369,6 +395,7 @@ def scan():
 
     add_details(img, fruits)
     summary = count_states(fruits)
+    compare_count(summary, read_count(request.form.get("count")))
     photo = to_base64(draw_boxes(img, fruits), max_size=1200)
     rgb, small_size = color_mean(img)
 

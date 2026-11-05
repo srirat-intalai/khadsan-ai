@@ -11,6 +11,7 @@
     --olive-soft: #E4EBD3;
     --rotten: #A63A12;     /* ไว้ใช้ตอนผลเป็น "เน่า" */
     --butter: #FFEDAB;
+    --amber: #8A6100;      /* เหลืองอำพัน = ให้คนดู (มีงานต้องทำ) */
 }
 
 /* ===== พื้นหน้าเว็บ ===== */
@@ -145,14 +146,16 @@ h1, h2, h3 {font-family: 'Mitr', sans-serif;}
 .tick-box img {position: absolute; left: -1px; bottom: 1px; width: 30px; height: 30px;}
 /* ติ๊ก = เสร็จ / ! บนช่องทึบ = เสร็จแต่มีลูกต้องจัดการ / กากบาท = error */
 .tick-ok, .tick-bang, .tick-x {display: none;}
-.step-done .tick-ok, .step-error .tick-x, .step-bad .tick-bang, .step-unsure .tick-bang {display: inline;}
+.step-done .tick-ok, .step-error .tick-x, .step-bad .tick-bang, .step-unsure .tick-bang, .step-miss .tick-bang, .step-extra .tick-bang {display: inline;}
 /* ! กับกากบาท อยู่ในช่องพอดี ไม่ล้น */
-.step-error .tick-box img, .step-bad .tick-box img, .step-unsure .tick-box img {left: 1px; bottom: 1px; width: 18px; height: 18px;}
+.step-error .tick-box img, .step-bad .tick-box img, .step-unsure .tick-box img, .step-miss .tick-box img, .step-extra .tick-box img {left: 1px; bottom: 1px; width: 18px; height: 18px;}
 
 .step-done .step-num, .step-done .mark {color: var(--olive);}
 .step-done .tick-box {border-color: var(--olive);}
 .step-none .tick-box, .step-skip .tick-box {border-style: dashed; border-color: var(--muted);}
-.step-unsure .tick-box {background: var(--muted); border-color: var(--muted);}
+/* ให้คนดู / ตีกรอบไม่ครบ / กรอบเกิน : ช่องสีเหลืองอำพัน + ! */
+.step-unsure .tick-box, .step-miss .tick-box, .step-extra .tick-box {background: var(--amber); border-color: var(--amber);}
+.step-unsure .step-num, .step-unsure .mark, .step-miss .step-num, .step-miss .mark, .step-extra .step-num, .step-extra .mark {color: var(--amber);}
 /* ยังไม่เริ่ม : ช่องเป็นวงเส้นประจางๆ จะได้ไม่ดูเหมือนช่องให้กดติ๊ก */
 .step:not([class*="step-"]) .tick-box {border-style: dashed; border-color: var(--muted); border-radius: 50%;}
 /* มีผลแล้ว : ซ่อนคำอธิบายย่อย แถบขั้นตอนเหลือบรรทัดเดียว */
@@ -246,6 +249,9 @@ button.pill:active {transform: translateY(1px); background: var(--olive-soft);}
 /* เลือกรูปแล้ว : ปุ่มตรวจเป็นสีเขียวทึบ */
 form:has(input[type="file"]:valid) .scan-btn {background: var(--olive); border-color: var(--olive); color: var(--paper) !important;}
 form:has(input[type="file"]:valid) .scan-btn .btn-ready img {filter: brightness(0) invert(1);}
+/* เลือกรูปแล้ว : ปุ่มตรวจเป็นปุ่มหลักตัวเดียว ปุ่มเปิดกล้องกลับเป็นปุ่มขอบ */
+form:has(input[type="file"]:valid) button.pill.cam-open {background: var(--paper); border-color: var(--ink); color: var(--ink) !important;}
+form:has(input[type="file"]:valid) .cam-open img {filter: none;}
 /* เลือกรูปแล้ว : ช่องเลือกรูปเส้นทึบเขียว */
 form:has(input[type="file"]:valid) .drop {border-style: solid; border-color: var(--olive); background: var(--olive-soft);}
 form:has(input[type="file"]:valid) .drop-hint {display: none;}
@@ -268,6 +274,15 @@ form.scan-form.is-busy button.scan-btn {background: var(--olive-soft) !important
 /* รูปตัวอย่าง (scan.js สร้าง) */
 .preview {display: block; max-width: 100%; max-height: 200px; width: auto; margin-top: 12px; border-radius: 8px; border: 1.5px solid var(--ink); object-fit: contain; background: var(--paper);}
 /* เตือนไฟล์ใหญ่เกิน */
+/* ลากรูปมาวางบนช่อง : ขอบเขียว */
+.drop.drag-over {border-color: var(--olive); border-style: solid; background: var(--olive-soft);}
+/* ช่อง "ในถาดมีกี่ลูก?" (ไม่บังคับ) */
+.count-row {display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 16px;}
+.count-label {flex: 1 1 220px; font-weight: 500;}
+.count-note {display: block; font-size: 14px; font-weight: 400; color: var(--muted);}
+.count-input {width: 110px; min-height: 44px; padding: 8px 12px; border: 1.5px solid var(--ink); border-radius: 10px; background: var(--paper); font-family: inherit; font-size: 17px; color: var(--ink); font-variant-numeric: tabular-nums;}
+.count-input:focus-visible {outline: 2px solid var(--olive); outline-offset: 2px;}
+.count-input::placeholder {color: var(--muted);}
 .drop-warn {display: block; margin-top: 8px; font-size: 14px; color: var(--rotten); font-weight: 500;}
 
 /* ===== โหมดกล้อง ===== */
@@ -354,9 +369,6 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 }
 
 /* แถบเขียวใต้กรอบ = ตรวจเสร็จ */
-.status {margin-top: 14px; display: flex; align-items: center; gap: 10px; background: var(--olive-soft); color: var(--olive); border-radius: 10px; padding: 10px 14px; font-size: 15px; font-weight: 500;}
-.status-bad {background: var(--dew); color: var(--rotten);}      /* มีลูกเน่า ไม่ใช่สีเขียว */
-.status-unsure {background: var(--dew); color: var(--muted);}
 
 
 /* ===== ผลตรวจ ===== */
@@ -378,16 +390,17 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 }
 /* ตราปั๊ม "เน่า" ใช้สีอิฐ */
 .stamp-rotten {color: var(--rotten); border-color: var(--rotten);}
-/* ตราปั๊ม "ให้คนดู" : หมึกจาง เส้นประ */
-.stamp-unsure {color: var(--muted); border-color: var(--muted); border-style: dashed;}
+/* ตราปั๊ม "ให้คนดู" / "ตรวจไม่ครบ" : เหลืองอำพัน เส้นประ */
+.stamp-unsure {color: var(--amber); border-color: var(--amber); border-style: dashed;}
 /* ตราปั๊ม "ไม่เจอผลไม้" : หมึกดำ เส้นคู่ (ไม่ให้หน้าตาเหมือน "ให้คนดู") */
 .stamp-none {color: var(--ink); border: 4px double var(--ink);}
 /* ป้ายผลตรวจ : ป้ายคือตัวผลเอง ไม่ต้องมีการ์ดครอบอีกชั้น */
 .r-tag {margin-bottom: 28px;}
 .r-tag .card-sub {margin-bottom: 6px;}
 #result-title:focus {outline: none;}
-/* แถว "ลูกนอกกรอบ" ในป้าย : ตัวหนังสือเล็กลงหน่อย เป็นข้อเตือน */
-.tag-row-out .tag-line {font-size: 17px; color: var(--muted);}
+/* แถวเตือนในป้าย (ไม่มีกรอบ / กรอบเกิน) : ตัวหนา สีเหลืองอำพัน */
+.tag-row-alert .tag-key, .tag-row-alert .tag-line {color: var(--amber); font-weight: 600;}
+.tag-row-alert .tag-line {font-size: 18px;}
 /* ไม่เจอผลไม้ : วิธีถ่ายใหม่ใต้ป้าย */
 .retry {margin-top: 14px; padding: 16px 18px; background: var(--dew); border: 1.5px solid var(--ink); border-radius: 12px;}
 .retry-lead {margin: 0 0 8px 0; font-weight: 500;}
@@ -398,6 +411,7 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 /* เตือนตอนความมั่นใจต่ำ */
 .tag-warn {margin-top: 10px; color: var(--muted); font-size: 15px;}
 .tag-bad {color: var(--rotten); font-weight: 600;}   /* เลขลูกที่ต้องคัดออก */
+.tag-unsure {color: var(--amber); font-weight: 600;}   /* เลขลูกที่ให้คนดู */
 /* ทางลัดสแกนรูปต่อไป (มือถือ) */
 .jump-next {display: none;}
 
@@ -466,7 +480,7 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
     .mark {font-size: 14px; line-height: 1.3; flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 6px;}
     .tick-box {width: 18px; height: 18px;}
     .tick-box img {width: 24px; height: 24px;}
-    .step-error .tick-box img, .step-bad .tick-box img, .step-unsure .tick-box img {width: 14px; height: 14px;}
+    .step-error .tick-box img, .step-bad .tick-box img, .step-unsure .tick-box img, .step-miss .tick-box img, .step-extra .tick-box img {width: 14px; height: 14px;}
     /* ข้อความกำลังทำ บรรทัดเดียว หน้าไม่กระตุก */
     .mark-wait {font-size: 14px; gap: 6px; white-space: nowrap;}
     .mark-text {white-space: nowrap;}
@@ -515,12 +529,12 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 .fruit-conf {color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums;}
 .good {background: var(--olive);}
 .bad {background: var(--rotten);}
-.unsure {background: var(--muted);}
+.unsure {background: var(--amber);}
 /* เลขลูกสด = วงครีมขอบเขียว (ไม่ใช้สีอย่างเดียวแยก) */
 .fruit-num.good {background: var(--paper); color: var(--olive); border: 2px solid var(--olive);}
 .fruit-state-good {color: var(--olive); font-weight: 600;}
 .fruit-state-bad {color: var(--rotten); font-weight: 600;}
-.fruit-state-unsure {color: var(--muted); font-weight: 600;}
+.fruit-state-unsure {color: var(--amber); font-weight: 600;}
 /* รูปผลตรวจ : สูงตามรูป ไม่เกิน 560px */
 .frame.has-result {height: auto;}
 .frame.has-result .frame-photo {height: auto; max-height: 560px;}
@@ -532,7 +546,7 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 /* หัวข้อ : บรรทัดยาวพอๆ กัน */
 .section-title, .card-title, .tag-title, .step-title, .section-sub .caption {text-wrap: balance;}
 /* ข้อความรอง : บรรทัดสุดท้ายไม่เหลือคำเดียว */
-.card-sub, .known, .chip-note, .tag-others, .tag-warn, .frame-msg, .why-list li {text-wrap: pretty;}
+.card-sub, .known, .chip-note, .tag-others, .tag-warn, .frame-msg, .why-list li, .retry-lead, .retry-tips li, .count-note {text-wrap: pretty;}
 
 /* จอแคบมาก (320) : ลดตัวหนังสือขั้นตอน ไม่ให้ล้นช่อง */
 @media (max-width: 360px) {
