@@ -42,9 +42,9 @@
     <div>
         <div class="step-title">{{ title }}</div>
         <div class="step-sub">{{ sub }}</div>
-        {# CSS โชว์ติ๊กเฉพาะขั้นที่เสร็จ กากบาทเฉพาะขั้นที่ error #}
+        {# CSS โชว์ ติ๊ก = เสร็จ / ! = เสร็จแต่มีลูกต้องจัดการ / กากบาท = error #}
         <div class="mark"><span class="tick-box">
-            <span class="tick-ok">{{ icons.tick|safe }}</span><span class="tick-x">{{ icons.cross|safe }}</span>
+            <span class="tick-ok">{{ icons.tick|safe }}</span><span class="tick-bang">{{ icons.bang|safe }}</span><span class="tick-x">{{ icons.cross|safe }}</span>
         </span><span class="mark-text">
             {%- if state == "done" %}เสร็จแล้ว{% endif -%}
             {%- if state == "bad" %}ต้องคัดออก{% endif -%}
@@ -163,7 +163,8 @@
         {% if summary.bad > 0 %}{% set s3 = "bad" %}{% elif summary.unsure > 0 %}{% set s3 = "unsure" %}{% else %}{% set s3 = "done" %}{% endif %}
     {% endif %}
 {% elif error %}
-    {% set s1 = "error" %}
+    {# รูปใช้ไม่ได้ : ขั้น 2-3 บอกว่าไม่ได้ตรวจ #}
+    {% set s1 = "error" %}{% set s2 = "skip" %}{% set s3 = "skip" %}
 {% endif %}
 <div class="steps">
     {{ step("1", "ใส่รูป", "ถ่ายรูปหรืออัปโหลด", s1, "รับรูป…") }}
