@@ -153,6 +153,11 @@ h1, h2, h3 {font-family: 'Mitr', sans-serif;}
 .step-done .tick-box {border-color: var(--olive);}
 .step-none .tick-box, .step-skip .tick-box {border-style: dashed; border-color: var(--muted);}
 .step-unsure .tick-box {background: var(--muted); border-color: var(--muted);}
+/* ยังไม่เริ่ม : ช่องเป็นวงเส้นประจางๆ จะได้ไม่ดูเหมือนช่องให้กดติ๊ก */
+.step:not([class*="step-"]) .tick-box {border-style: dashed; border-color: var(--muted); border-radius: 50%;}
+/* มีผลแล้ว : ซ่อนคำอธิบายย่อย แถบขั้นตอนเหลือบรรทัดเดียว */
+.steps-short .step-sub {display: none;}
+.steps-short .step {padding-top: 14px; padding-bottom: 14px;}
 /* มีลูกเน่า : ขั้นที่ 3 สีอิฐ */
 .step-bad .step-num, .step-bad .mark {color: var(--rotten);}
 .step-bad .tick-box {background: var(--rotten); border-color: var(--rotten);}
@@ -168,13 +173,13 @@ h1, h2, h3 {font-family: 'Mitr', sans-serif;}
     to {transform: rotate(360deg);}
 }
 /* ระหว่างเล่น : ขั้นที่ยังไม่ถึงซ่อนติ๊ก (จองที่ไว้ หน้าไม่กระตุก) */
-.play .step:not(.shown) .mark {visibility: hidden; animation: show-late 0s 6s forwards;}
+.play .step:not(.shown) .mark {visibility: hidden; animation: show-late 0s 3s forwards;}
 .play .step:not(.shown):not(.now) .step-num {color: var(--ink);}
 /* ผลตรวจซ่อนระหว่างเล่น จบแล้วค่อยโผล่ */
 .result-layout {transition: opacity 0.5s ease-out, transform 0.5s ease-out;}
 /* visibility hidden : ระหว่างซ่อน Tab/โปรแกรมอ่านหน้าจอจะไม่เจอ */
-.play .result-layout {opacity: 0; visibility: hidden; transform: translateY(12px); animation: show-late 0.5s ease-out 6s forwards;}
-/* scan.js โหลดไม่ได้ 6 วิ ผลก็โผล่เอง */
+.play .result-layout {opacity: 0; visibility: hidden; transform: translateY(12px); animation: show-late 0.5s ease-out 3s forwards;}
+/* scan.js โหลดไม่ได้ 3 วิ ผลก็โผล่เอง */
 @keyframes show-late {
     to {opacity: 1; transform: none; visibility: visible;}
 }
@@ -237,7 +242,7 @@ button.pill:active {transform: translateY(1px); background: var(--olive-soft);}
 .drop-ok {display: none; color: var(--olive); font-weight: 500;}
 .drop-ok img {vertical-align: -2px;}
 /* ยังไม่เลือกรูป : ปุ่มจาง เส้นประ */
-form:has(input[type="file"]:invalid) .scan-btn {border-style: dashed; color: var(--muted) !important; box-shadow: none;}
+/* ยังไม่เลือกรูป : ปุ่มขอบดำธรรมดา (กดได้ จะเตือนให้เลือกรูปก่อน) / เลือกแล้ว : ปุ่มเขียวทึบ */
 /* เลือกรูปแล้ว : ปุ่มตรวจเป็นสีเขียวทึบ */
 form:has(input[type="file"]:valid) .scan-btn {background: var(--olive); border-color: var(--olive); color: var(--paper) !important;}
 form:has(input[type="file"]:valid) .scan-btn .btn-ready img {filter: brightness(0) invert(1);}
@@ -267,8 +272,9 @@ form.scan-form.is-busy button.scan-btn {background: var(--olive-soft) !important
 
 /* ===== โหมดกล้อง ===== */
 .cam-row {display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px;}
-button.pill.cam-open {background: var(--paper);}
-.cam-open img {width: 22px; height: 22px;}
+/* เปิดกล้อง = ทางหลักบนมือถือ ใช้ปุ่มเขียวทึบ */
+button.pill.cam-open {background: var(--olive); border-color: var(--olive); color: var(--paper) !important;}
+.cam-open img {width: 22px; height: 22px; filter: brightness(0) invert(1);}
 .cam-or {font-size: 14px; color: var(--muted);}
 .cam {margin-bottom: 16px;}
 /* ภาพสดจากกล้อง */
@@ -290,6 +296,8 @@ button.pill.cam-open {background: var(--paper);}
 button.pill.cam-live[aria-pressed="true"] {background: var(--olive-soft); border-color: var(--olive); color: var(--olive) !important;}
 .cam-note {margin-top: 8px; font-size: 14px; color: var(--muted);}
 .cam-actions {display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px;}
+/* ปิดกล้องอยู่ขวาสุด ห่างจากสแกนสด */
+.cam-actions .cam-close {margin-left: auto;}
 button.pill.cam-shot {background: var(--olive); color: var(--paper) !important; border-color: var(--olive);}
 .cam-msg {margin-bottom: 16px; padding: 10px 14px; border: 1.5px solid var(--rotten); border-radius: 10px; color: var(--rotten); font-size: 15px;}
 .drop:has(.drop-warn:not([hidden])) .drop-hint {display: none;}
@@ -372,6 +380,19 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 .stamp-rotten {color: var(--rotten); border-color: var(--rotten);}
 /* ตราปั๊ม "ให้คนดู" : หมึกจาง เส้นประ */
 .stamp-unsure {color: var(--muted); border-color: var(--muted); border-style: dashed;}
+/* ตราปั๊ม "ไม่เจอผลไม้" : หมึกดำ เส้นคู่ (ไม่ให้หน้าตาเหมือน "ให้คนดู") */
+.stamp-none {color: var(--ink); border: 4px double var(--ink);}
+/* ป้ายผลตรวจ : ป้ายคือตัวผลเอง ไม่ต้องมีการ์ดครอบอีกชั้น */
+.r-tag {margin-bottom: 28px;}
+.r-tag .card-sub {margin-bottom: 6px;}
+#result-title:focus {outline: none;}
+/* แถว "ลูกนอกกรอบ" ในป้าย : ตัวหนังสือเล็กลงหน่อย เป็นข้อเตือน */
+.tag-row-out .tag-line {font-size: 17px; color: var(--muted);}
+/* ไม่เจอผลไม้ : วิธีถ่ายใหม่ใต้ป้าย */
+.retry {margin-top: 14px; padding: 16px 18px; background: var(--dew); border: 1.5px solid var(--ink); border-radius: 12px;}
+.retry-lead {margin: 0 0 8px 0; font-weight: 500;}
+.retry-tips {margin: 0 0 14px 0; padding-left: 20px; display: grid; gap: 4px; font-size: 15px;}
+.retry-btn {min-height: 44px;}
 /* ไม่ตัดกลางคำ */
 .nowrap {white-space: nowrap;}
 /* เตือนตอนความมั่นใจต่ำ */
@@ -491,7 +512,6 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 .why-list b {font-weight: 600; color: var(--cocoa);}
 /* เกณฑ์ 3 ผลในข้อ % ความมั่นใจ */
 .why-rules {margin: 4px 0 0; padding-left: 18px; display: grid; gap: 2px;}
-.why-tips {margin-top: 14px; padding: 10px 14px; background: var(--dew); border-radius: 10px; font-size: 15px;}
 .fruit-conf {color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums;}
 .good {background: var(--olive);}
 .bad {background: var(--rotten);}

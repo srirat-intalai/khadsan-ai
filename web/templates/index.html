@@ -99,6 +99,7 @@
         <div class="cam-actions">
             <button class="pill cam-shot" type="button">ถ่าย</button>
             <button class="pill cam-live" type="button" aria-pressed="false">สแกนสด</button>
+            {# ปิดกล้องแยกไปไว้ขวาสุด กันกดพลาดตอนจะกดสแกนสด #}
             <button class="pill cam-close" type="button">ปิดกล้อง</button>
         </div>
         <div class="cam-note">สแกนสด = เล็งกล้องค้างไว้ กรอบจะขึ้นตามผลไม้ (กรอบเทาเส้นประ = ให้คนดู) · อยากได้รายละเอียดทีละลูก กด "ถ่าย" แล้วตรวจ</div>
@@ -166,7 +167,8 @@
     {# รูปใช้ไม่ได้ : ขั้น 2-3 บอกว่าไม่ได้ตรวจ #}
     {% set s1 = "error" %}{% set s2 = "skip" %}{% set s3 = "skip" %}
 {% endif %}
-<div class="steps">
+{# มีผลแล้ว / รูปใช้ไม่ได้ : แถบขั้นตอนย่อเหลือบรรทัดเดียว (ซ่อนคำอธิบายย่อย) #}
+<div class="steps{% if summary or error %} steps-short{% endif %}">
     {{ step("1", "ใส่รูป", "ถ่ายรูปหรืออัปโหลด", s1, "รับรูป…") }}
     {{ step("2", "ตีกรอบผลไม้", "AI หาผลไม้ทุกลูกในรูป", s2, "หาผลไม้…") }}
     {{ step("3", "AI ตรวจ", "บอกชนิด สด/เน่า และ % ความมั่นใจ ทีละลูก", s3, "ดูทีละลูก…") }}
@@ -185,14 +187,15 @@
 
     <div class="result-col">
         <!-- ป้ายตรวจคุณภาพ (ตราปั๊มบอกว่าต้องทำอะไร) -->
-        <div class="card r-tag">
-            <h3 class="card-title">ผลตรวจ</h3>
+        {# ป้ายคือตัวผล ไม่ต้องมีกรอบการ์ดซ้อนอีกชั้น #}
+        <div class="r-tag">
+            <h3 class="card-title" id="result-title" tabindex="-1">ผลตรวจ</h3>
             <div class="card-sub">ผลจาก AI ใช้ช่วยคัด ไม่ใช่คำตัดสินสุดท้าย</div>
             <div class="result-wrap"><div class="result-tag">
                 <div class="tag-card">
                     <div class="tag-hole"></div>
                     {% if summary.total == 0 %}
-                    <div class="stamp stamp-unsure">ไม่พบผลไม้</div>
+                    <div class="stamp stamp-none">ไม่เจอผลไม้</div>
                     {% elif summary.bad > 0 %}
                     <div class="stamp stamp-rotten">คัดออก {{ summary.bad }} ลูก</div>
                     {% elif summary.unsure > 0 %}
@@ -201,26 +204,36 @@
                     <div class="stamp">สดทั้งหมด</div>
                     {% endif %}
                     <div class="tag-title">ป้ายตรวจคุณภาพ</div>
-                    {% if summary.total == 0 %}
-                    <div class="tag-row"><span class="tag-key">ผล</span><span class="tag-line">ไม่พบผลไม้ 5 ชนิดที่รู้จัก</span></div>
-                    {% else %}
-                    <div class="tag-row"><span class="tag-key">AI เจอ</span><span class="tag-line">{{ summary.total }} ลูก{% if summary.bad > 0 %} · <span class="nowrap">เน่า {{ summary.bad }} ลูก ({{ summary.bad_percent }}%)</span>{% endif %}</span></div>
-                    <div class="tag-row"><span class="tag-key">คัดออก</span>{% if summary.bad_nums %}<span class="tag-line tag-bad">{{ summary.bad_nums|join(", ") }}</span>{% else %}<span class="tag-line">–</span>{% endif %}</div>
-                    <div class="tag-row"><span class="tag-key">ให้คนดู</span><span class="tag-line">{% if summary.unsure_nums %}{{ summary.unsure_nums|join(", ") }}{% else %}–{% endif %}</span></div>
+                    {# นับได้แค่ลูกที่มีกรอบ เลยเขียนว่า "ตีกรอบได้" ไม่ใช่ "เจอ" #}
+                    <div class="tag-row"><span class="tag-key">AI ตีกรอบได้</span><span class="tag-line">{{ summary.total }} ลูก{% if summary.bad > 0 %} · <span class="nowrap">เน่า {{ summary.bad }} ลูก ({{ summary.bad_percent }}%)</span>{% endif %}</span></div>
+                    {% if summary.total > 0 %}
+                    <div class="tag-row"><span class="tag-key">คัดออก</span>{% if summary.bad_nums %}<span class="tag-line tag-bad">{{ summary.bad_nums|join(", ") }}</span>{% else %}<span class="tag-line">ไม่มีในกรอบ</span>{% endif %}</div>
+                    <div class="tag-row"><span class="tag-key">ให้คนดู</span><span class="tag-line">{% if summary.unsure_nums %}{{ summary.unsure_nums|join(", ") }}{% else %}ไม่มีในกรอบ{% endif %}</span></div>
                     <div class="tag-row"><span class="tag-key">สด</span><span class="tag-line">{{ summary.good }} ลูก</span></div>
                     {% endif %}
+                    {# ลูกที่ไม่มีกรอบ = AI ไม่ได้ดู ต้องอยู่ในป้าย ไม่ใช่ตัวเล็กข้างล่าง #}
+                    <div class="tag-row tag-row-out"><span class="tag-key">ลูกนอกกรอบ</span><span class="tag-line">ไม่ได้ตรวจ ให้คนดูเอง</span></div>
                     <div class="tag-foot">ตรวจโดย KhadSan AI</div>
                 </div>
             </div></div>
             {% if summary.total == 0 %}
-            <div class="tag-warn">ลองถ่ายใหม่ให้เห็นผลไม้ทั้งลูก แสงพอ ดูวิธีใน "AI ตัดสินจากอะไร"</div>
+            {# ไม่เจอผลไม้ : บอกว่าเป็นข้อจำกัดของ AI แล้วบอกวิธีถ่ายใหม่ตรงนี้เลย #}
+            <div class="retry">
+                <p class="retry-lead">AI หาผลไม้ในรูปนี้ไม่เจอ ถ้าในรูปมีผลไม้ ลองถ่ายใหม่แบบนี้</p>
+                <ul class="retry-tips">
+                    <li>ถ่ายใกล้ขึ้น ให้เห็นผลไม้ทั้งลูก</li>
+                    <li>ผลไม้กองซ้อนกันเยอะ แยกกองเล็กลงก่อนถ่าย</li>
+                    <li>แสงพอ ไม่เบลอ และเป็นแอปเปิล กล้วย ส้ม ทับทิม หรือมะนาว</li>
+                </ul>
+                <a class="pill retry-btn" href="#next">ถ่ายหรือเลือกรูปใหม่ {{ icons.arrow|safe }}</a>
+            </div>
             {% else %}
-            <div class="tag-warn">นับเฉพาะลูกที่มีกรอบในรูป ลูกที่ไม่มีกรอบ AI ไม่ได้ตรวจ ให้คนดูเอง (ผลไม้เยอะหรือซ้อนกัน ลองแยกกองแล้วถ่ายใหม่)</div>
+            <div class="tag-warn">ผลไม้เยอะหรือซ้อนกัน AI อาจตีกรอบไม่ครบ ลองแยกกองแล้วถ่ายใหม่</div>
             {% endif %}
             {# โปรแกรมอ่านหน้าจอจะอ่านสรุปนี้ก่อนรายการ #}
-            <div class="sr-only" id="summary-text">ผลตรวจ: พบผลไม้ {{ summary.total }} ลูก คัดออก {{ summary.bad }} ลูก ({{ summary.bad_percent }}%) ให้คนดู {{ summary.unsure }} ลูก สด {{ summary.good }} ลูก</div>
-            {# มือถือ : ทางลัดไปสแกนรูปต่อไป #}
-            <a class="jump-next" href="#next">สแกนรูปต่อไป ↓</a>
+            <div class="sr-only" id="summary-text">ผลตรวจ: AI ตีกรอบได้ {{ summary.total }} ลูก คัดออก {{ summary.bad }} ลูก ({{ summary.bad_percent }}%) ให้คนดู {{ summary.unsure }} ลูก สด {{ summary.good }} ลูก ลูกที่ไม่มีกรอบ AI ไม่ได้ตรวจ</div>
+            {# มือถือ : ทางลัดไปสแกนรูปต่อไป (หน้าไม่เจอผลไม้มีปุ่มถ่ายใหม่แล้ว) #}
+            {% if summary.total > 0 %}<a class="jump-next" href="#next">สแกนรูปต่อไป ↓</a>{% endif %}
         </div>
 
         {% if summary.total > 0 %}
@@ -247,9 +260,9 @@
         </div>
         {% endif %}
 
-        <!-- AI ตัดสินจากอะไร -->
-        <div class="card r-why">
-            <h3 class="card-title">AI ตัดสินจากอะไร</h3>
+        <!-- AI ตัดสินจากอะไร (พับไว้ เปิดเองเฉพาะตอนมีลูกให้คนดู) -->
+        <details class="card r-why"{% if summary.unsure > 0 %} open{% endif %}>
+            <summary class="card-title">AI ตัดสินจากอะไร</summary>
             <ul class="why-list">
                 <li><b>เรียนจากรูปจริง</b> โมเดล YOLOv8 ฝึกจากรูปผลไม้ 1,624 รูปที่คนติดป้ายไว้แล้วว่าลูกไหนสด ลูกไหนเน่า และรูปเสริมอีกราว 3,300 รูป</li>
                 <li><b>บอกชนิด</b> ดูรูปทรงและสีของแต่ละลูก</li>
@@ -263,10 +276,7 @@
                 </li>
                 <li><b>ข้อจำกัด</b> AI เห็นแค่รูป ไม่ได้ดมกลิ่นหรือกดดูความนิ่ม ผลไม้นอก 5 ชนิด รูปเบลอ หรือแสงน้อย อาจทายผิดได้</li>
             </ul>
-            {% if summary.total == 0 %}
-            <div class="why-tips"><b>ถ่ายใหม่ให้ได้ผลดี:</b> ให้เห็นผลไม้ทั้งลูก ไม่ไกลเกินไป แสงพอ ไม่เบลอ และเป็น แอปเปิล กล้วย ส้ม ทับทิม หรือมะนาว</div>
-            {% endif %}
-        </div>
+        </details>
     </div>
 
     <div class="result-col">
@@ -356,7 +366,7 @@
             <div class="card-sub">ใช้รูปนี้ไม่ได้</div>
             <div class="frame frame-error">
                 {{ corners() }}
-                <div class="frame-msg">{{ icons.alert|safe }}<span class="msg">ลองเลือกรูปใหม่ หรือเปิดกล้องถ่ายใหม่</span></div>
+                <div class="frame-msg">{{ icons.alert|safe }}<span class="msg">ยังไม่ได้ตรวจรูปนี้</span></div>
             </div>
             {% else %}
             <div class="card-sub frame-sub">ยังไม่มีรูป</div>

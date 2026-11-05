@@ -273,8 +273,8 @@ input.addEventListener("click", function () {
 
 // ----- 5) ได้ผลแล้ว : ติ๊กขั้นตอนทีละขั้น แล้วค่อยโชว์ผล -----
 // เล่นเมื่อ html มี class "play" (มีผลตรวจ)
-// ครั้งแรกเล่นช้าๆ ~5 วิ ให้เห็นว่า AI ทำอะไร / ครั้งต่อไปไม่ถึง 1 วิ
-var stepTimes = [800, 2000, 2200];
+// ครั้งแรกเล่น ~1.5 วิ ให้เห็นว่า AI ทำอะไร (ไม่ให้รอนาน) / ครั้งต่อไปราวครึ่งวิ
+var stepTimes = [400, 550, 550];
 var stepIndex = 0;
 var timer = null;
 var skipRow = document.querySelector(".skip-row");
@@ -310,13 +310,21 @@ function showResult() {
     if (summaryText) {
         live.textContent = summaryText.textContent;
     }
+    // ย้ายโฟกัสไปหัวข้อผลตรวจ (คนใช้คีย์บอร์ด/โปรแกรมอ่านหน้าจอเริ่มที่ผลเลย)
+    // ถ้าคนกำลังกดอย่างอื่นอยู่ ไม่แย่งโฟกัส
+    var resultTitle = document.getElementById("result-title");
+    var nothingFocused = document.activeElement == null || document.activeElement == document.body;
+    var skipFocused = document.activeElement && document.activeElement.classList.contains("skip-anim");
+    if (resultTitle && (nothingFocused || skipFocused)) {
+        resultTitle.focus({preventScroll: true});
+    }
 }
 
 if (page.classList.contains("play")) {
     // จำว่าเคยดูแล้ว เฉพาะตอนได้ดูจริง (ถ้าจำตั้งแต่หน้าแรก ผลครั้งแรกจะเล่นแบบเร็วไปเลย)
     try {
         if (localStorage.getItem("khadsan-seen-steps") == "yes") {
-            stepTimes = [200, 250, 250];
+            stepTimes = [150, 200, 200];
         }
         localStorage.setItem("khadsan-seen-steps", "yes");
     } catch (e) {
