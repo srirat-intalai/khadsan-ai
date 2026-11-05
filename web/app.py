@@ -6,6 +6,7 @@ import os
 import io
 import json
 import base64
+import threading
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from PIL import Image, ImageOps, ImageDraw, ImageFont, ImageStat
 
@@ -109,6 +110,8 @@ def color_mean(img):
 # ===== โมเดล =====
 # โหลดครั้งเดียวแล้วจำไว้
 model = None
+# ให้โมเดลตรวจทีละงาน (เว็บรับหลายคนพร้อมกันได้ แต่โมเดลไม่ชนกัน)
+model_lock = threading.Lock()
 
 
 def load_model():
@@ -357,9 +360,10 @@ def scan():
     except Exception:
         return render_template("index.html", error="เปิดรูปนี้ไม่ได้ ไฟล์อาจเสียหรือไม่ใช่ jpg / png / webp จริง ลองรูปอื่นดูนะ")
 
-    # ให้โมเดลตรวจ (พังก็ไม่โชว์ error ดิบ)
+    # ให้โมเดลตรวจ (พังก็ไม่โชว์ error ดิบ) ถ้าโมเดลกำลังตรวจงานอื่นอยู่ รอจนเสร็จ
     try:
-        fruits = detect(img)
+        with model_lock:
+            fruits = detect(img)
     except Exception:
         return render_template("index.html", photo=to_base64(img), error="ตอนนี้ AI ตรวจไม่ได้ ลองใหม่อีกครั้งนะ")
 
@@ -392,9 +396,17 @@ def live():
             return jsonify({"ok": False, "boxes": []})
         img.load()
         img = img.convert("RGB")
+    except Exception:
+        return jsonify({"ok": False, "boxes": []})
+    # โมเดลกำลังตรวจงานอื่น (เช่น รูปที่อัปโหลด) : ข้ามภาพนี้ไปเลย ไม่เข้าคิว รูปที่อัปจะได้ไม่ต้องรอนาน
+    if not model_lock.acquire(blocking=False):
+        return jsonify({"ok": False, "busy": True, "boxes": []})
+    try:
         fruits = detect(img)
     except Exception:
         return jsonify({"ok": False, "boxes": []})
+    finally:
+        model_lock.release()
 
     # ตำแหน่งกรอบเป็นสัดส่วน 0-1
     w, h = img.size
@@ -434,6 +446,6 @@ if __name__ == "__main__":
         except Exception:
             pass
 
-    # threaded=False : ตรวจทีละรูป โมเดลไม่ชนกัน
+    # threaded=True : รับหลายคนพร้อมกัน (โมเดลตรวจทีละงานด้วย model_lock)
     # port 7860 (เปลี่ยนได้ด้วยตัวแปร PORT)
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 7860)), debug=False, threaded=False)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 7860)), debug=False, threaded=True)

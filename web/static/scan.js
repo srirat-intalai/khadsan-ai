@@ -410,7 +410,8 @@ function sendFrame() {
                 return res.json();
             })
             .then(function (result) {
-                if (liveOn) {
+                // busy = โมเดลกำลังตรวจรูปอื่น : คงกรอบเดิมไว้ แล้วส่งภาพใหม่
+                if (liveOn && !result.busy) {
                     drawLiveBoxes(result.boxes);
                     showLiveInfo(result);
                 }
