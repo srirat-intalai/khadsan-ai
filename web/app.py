@@ -17,8 +17,8 @@ CLASS_FILE = os.path.join(folder, "models", "class_info.json")
 MAX_MB = 10             # กันคนอัปรูปใหญ่เกิน
 MAX_PIXELS = 50000000   # กันรูปพิกเซลเยอะผิดปกติ (กินแรม)
 CONF_MIN = 0.40         # มั่นใจต่ำกว่านี้ไม่นับ (0.25 เคยตีกรอบหน้าคน)
-LOW_CONF = 60           # ความมั่นใจต่ำกว่านี้ (%) ให้ขึ้น "ตรวจซ้ำ"
-HIGH_CONF = 85          # ตั้งแต่นี้ขึ้นไป (%) = มั่นใจสูง
+LOW_CONF = 60           # มั่นใจต่ำกว่านี้ (%) = "ให้คนดู"
+HIGH_CONF = 85          # ว่าสดต้องมั่นใจตั้งแต่นี้ (%) ไม่ถึง = "ให้คนดู"
 MAX_FRUITS = 30         # โชว์รายการไม่เกินกี่ลูก
 SAME_FRUIT = 0.5        # กรอบทับกันเกินครึ่ง = ลูกเดียวกัน
 
@@ -37,7 +37,7 @@ if os.path.exists(CLASS_FILE):
 # สีกรอบ ต้องตรงกับสีใน static/style.css
 COLOR_GOOD = (79, 104, 21)      # เขียวมะกอก = สด
 COLOR_BAD = (166, 58, 18)       # สีอิฐ = เน่า
-COLOR_UNSURE = (94, 84, 75)     # หมึกจาง = ไม่แน่ใจ
+COLOR_UNSURE = (94, 84, 75)     # หมึกจาง = ให้คนดู
 COLOR_PAPER = (253, 251, 249)   # สีครีม ขอบกรอบและตัวเลข
 
 
@@ -131,16 +131,17 @@ def detect(img):
         conf = float(result.boxes.conf[i]) * 100
         xyxy = result.boxes.xyxy[i]
         box = [float(xyxy[0]), float(xyxy[1]), float(xyxy[2]), float(xyxy[3])]
+        # 3 ผล : good = สด / bad = คัดออก / unsure = ให้คนดู
         if conf < LOW_CONF:
             state = "unsure"
+        elif quality == "Good" and conf < HIGH_CONF:
+            state = "unsure"   # ว่าสดแต่มั่นใจไม่สูง ถ้าจริงๆ เน่าจะหลุดถึงลูกค้า
         elif quality == "Good":
             state = "good"
         else:
-            state = "bad"
-        # check = ลูกที่ว่าสดแต่มั่นใจไม่สูง (ถ้าจริงๆ เน่าจะหลุดถึงลูกค้า)
-        check = state == "good" and conf < HIGH_CONF
+            state = "bad"      # ว่าเน่าตั้งแต่ LOW_CONF คัดออกเลย กันพลาดไว้ก่อน
         fruits.append({"fruit": fruit, "thai": THAI_NAMES.get(fruit, fruit), "quality": quality,
-                       "conf": round(conf), "box": box, "state": state, "check": check})   # % ปัดเป็นเลขกลม
+                       "conf": round(conf), "box": box, "state": state})   # % ปัดเป็นเลขกลม
 
     # เรียงแบบอ่านหนังสือ : จุดกลางสูงต่างกันไม่ถึงครึ่งลูก = แถวเดียวกัน
     fruits.sort(key=middle_y)
@@ -203,8 +204,8 @@ def draw_boxes(img, fruits):
     for f in order:
         x1, y1, x2, y2 = f["box"]
         draw.rectangle([x1 - ring, y1 - ring, x2 + ring, y2 + ring], outline=COLOR_PAPER, width=ring)
-        if f["check"]:
-            # สดแต่ควรดูอีกที = เส้นประเขียวบนพื้นครีม
+        if f["state"] == "unsure":
+            # ให้คนดู = เส้นประเทาบนพื้นครีม
             draw.rectangle([x1, y1, x2, y2], outline=COLOR_PAPER, width=line)
             dashed_rect(draw, [x1, y1, x2, y2], box_color(f), line)
         else:
@@ -276,14 +277,17 @@ def add_details(img, fruits):
         else:
             f["level"] = "มั่นใจต่ำ"
 
-        # เหตุผล : เฉพาะลูกที่ต้องตรวจซ้ำ ว่า AI เอนไปทางไหน
+        # เหตุผล : เฉพาะลูกที่ให้คนดู ว่าทำไม
         f["reason"] = ""
         if f["state"] == "unsure":
             if f["quality"] == "Good":
                 lean = "สด"
             else:
                 lean = "เน่า"
-            f["reason"] = "AI เอนไปทาง" + lean + " แต่มั่นใจไม่ถึง " + str(LOW_CONF) + "% เลยให้คนตรวจซ้ำ"
+            if f["conf"] < LOW_CONF:
+                f["reason"] = "AI เอนไปทาง" + lean + " แต่มั่นใจไม่ถึง " + str(LOW_CONF) + "% ให้คนตัดสิน"
+            else:
+                f["reason"] = "AI ว่าสด แต่มั่นใจไม่ถึง " + str(HIGH_CONF) + "% ถ้าเน่าจริงจะหลุดไปถึงลูกค้า เลยให้คนดู"
 
         # สิ่งที่อาจทำให้ AI มั่นใจน้อยลง
         notes = []
@@ -301,18 +305,16 @@ def add_details(img, fruits):
         f["notes"] = notes
 
 
-# นับสด / เน่า / ตรวจซ้ำ และจดเลขลูกของแต่ละกลุ่ม
+# นับสด / คัดออก / ให้คนดู และจดเลขลูกของแต่ละกลุ่ม
 def count_states(fruits):
     summary = {"total": len(fruits), "good": 0, "bad": 0, "unsure": 0,
-               "bad_nums": [], "unsure_nums": [], "check_nums": []}
+               "bad_nums": [], "unsure_nums": []}
     for f in fruits:
         summary[f["state"]] = summary[f["state"]] + 1
         if f["state"] == "bad":
             summary["bad_nums"].append("#" + str(f["num"]))
         if f["state"] == "unsure":
             summary["unsure_nums"].append("#" + str(f["num"]))
-        if f["check"]:
-            summary["check_nums"].append("#" + str(f["num"]))
     # เน่ากี่ % ของทั้งถาด
     summary["bad_percent"] = 0
     if summary["total"] > 0:
@@ -320,15 +322,13 @@ def count_states(fruits):
     return summary
 
 
-# เรียงรายการ : เน่า → ตรวจซ้ำ → สดที่ควรดูอีกที → สด (เลขลูกไม่เปลี่ยน)
+# เรียงรายการ : คัดออก → ให้คนดู → สด (เลขลูกไม่เปลี่ยน)
 def list_order(f):
     if f["state"] == "bad":
         return 0
     if f["state"] == "unsure":
         return 1
-    if f["check"]:
-        return 2
-    return 3
+    return 2
 
 
 # ===== หน้าเว็บ =====
@@ -400,11 +400,10 @@ def live():
     boxes = []
     for f in fruits:
         boxes.append({"x1": f["box"][0] / w, "y1": f["box"][1] / h, "x2": f["box"][2] / w, "y2": f["box"][3] / h,
-                      "thai": f["thai"], "state": f["state"], "conf": f["conf"], "check": f["check"]})
+                      "thai": f["thai"], "state": f["state"], "conf": f["conf"]})
     summary = count_states(fruits)
     return jsonify({"ok": True, "boxes": boxes, "total": summary["total"],
-                    "good": summary["good"], "bad": summary["bad"], "unsure": summary["unsure"],
-                    "check": len(summary["check_nums"])})
+                    "good": summary["good"], "bad": summary["bad"], "unsure": summary["unsure"]})
 
 
 # ไฟล์ใหญ่เกิน MAX_MB
