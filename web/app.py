@@ -223,10 +223,7 @@ def find_more(img, fruits, missing):
 def draw_boxes(img, fruits):
     out = img.copy()
     draw = ImageDraw.Draw(out)
-    line = max(5, round(max(out.size) / 120))       # รูปใหญ่ เส้นก็หนาขึ้น
-    ring = max(2, line // 2)                        # ขอบครีมรอบนอก
-    biggest = max(18, round(max(out.size) / 18))    # เลขใหญ่สุด (ลูกใหญ่ อ่านง่ายบนมือถือ)
-    smallest = max(12, round(max(out.size) / 60))   # เลขเล็กสุด (ลูกเล็กมาก ยังพออ่านออก)
+    side = max(out.size)   # ด้านยาวของรูป ใช้กำหนดขนาดเล็กสุด/ใหญ่สุด
     fonts = {}   # เก็บฟอนต์แต่ละขนาดไว้ ไม่ต้องโหลดซ้ำ
 
     # วาดกรอบใหญ่ก่อน กรอบเล็กจะไม่โดนทับ
@@ -235,6 +232,7 @@ def draw_boxes(img, fruits):
     # รอบ 1 : กรอบทุกลูก (ขอบครีม + สีด้านใน เห็นชัดทุกพื้นหลัง)
     for f in order:
         x1, y1, x2, y2 = f["box"]
+        line, ring, font_size = box_sizes(f, side)
         draw.rectangle([x1 - ring, y1 - ring, x2 + ring, y2 + ring], outline=COLOR_PAPER, width=ring)
         if f["state"] == "check":
             # ให้ตรวจซ้ำ = เส้นประบนพื้นครีม
@@ -247,9 +245,7 @@ def draw_boxes(img, fruits):
     # สด / ให้ตรวจซ้ำ = ป้ายครีมเลขเขียว / อื่นๆ = ป้ายทึบเลขครีม (คนแยกสีไม่ออกก็ดูออก)
     for f in order:
         x1, y1, x2, y2 = f["box"]
-        # เลขโตตามขนาดลูก : ไม่เกินราว 1 ใน 4 ของด้านสั้น จะได้ไม่บังผลไม้ในรูปที่มีหลายลูก
-        font_size = round(min(x2 - x1, y2 - y1) * 0.28)
-        font_size = max(smallest, min(biggest, font_size))
+        line, ring, font_size = box_sizes(f, side)
         if font_size not in fonts:
             fonts[font_size] = ImageFont.load_default(size=font_size)
         font = fonts[font_size]
@@ -264,6 +260,19 @@ def draw_boxes(img, fruits):
             text_color = COLOR_PAPER
         draw.text((x1 + font_size * 0.3, y1 + font_size * 0.1), label, fill=text_color, font=font)
     return out
+
+
+# ขนาดเส้นกรอบ ขอบครีม และเลข ของแต่ละลูก : โตตามขนาดลูก (ด้านสั้นของกรอบ)
+# ลูกเล็กในรูปที่มีหลายลูก เส้นบาง เลขเล็ก จะได้ไม่บังผลไม้ / ลูกใหญ่ไม่หนาเกิน
+# มีขั้นต่ำกับขั้นสูงตามขนาดรูป กันเส้นบางจนมองไม่เห็นหรือหนาเกินไป
+def box_sizes(f, side):
+    short = min(f["box"][2] - f["box"][0], f["box"][3] - f["box"][1])
+    line = round(short * 0.04)                                      # เส้นราว 4% ของด้านสั้น
+    line = max(max(2, round(side / 400)), min(max(4, round(side / 120)), line))
+    ring = max(1, line // 2)                                        # ขอบครีมครึ่งหนึ่งของเส้น
+    font_size = round(short * 0.22)                                 # เลขราว 1 ใน 5 ของด้านสั้น
+    font_size = max(max(11, round(side / 70)), min(max(16, round(side / 18)), font_size))
+    return line, ring, font_size
 
 
 # กรอบเส้นประ (PIL ไม่มีให้ วาดเส้นสั้นๆ ต่อกันเอง)
