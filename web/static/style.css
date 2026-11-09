@@ -146,15 +146,18 @@ h1, h2, h3 {font-family: 'Mitr', sans-serif;}
 .tick-box img {position: absolute; left: -1px; bottom: 1px; width: 30px; height: 30px;}
 /* ติ๊ก = เสร็จ / ! บนช่องทึบ = เสร็จแต่มีลูกต้องจัดการ / กากบาท = error */
 .tick-ok, .tick-bang, .tick-x {display: none;}
-.step-done .tick-ok, .step-error .tick-x, .step-bad .tick-bang, .step-unsure .tick-bang, .step-miss .tick-bang, .step-extra .tick-bang {display: inline;}
+.step-done .tick-ok, .step-error .tick-x, .step-bad .tick-bang, .step-unsure .tick-bang, .step-check .tick-bang, .step-miss .tick-bang, .step-extra .tick-bang {display: inline;}
 /* ! กับกากบาท อยู่ในช่องพอดี ไม่ล้น */
-.step-error .tick-box img, .step-bad .tick-box img, .step-unsure .tick-box img, .step-miss .tick-box img, .step-extra .tick-box img {left: 1px; bottom: 1px; width: 18px; height: 18px;}
+.step-error .tick-box img, .step-bad .tick-box img, .step-unsure .tick-box img, .step-check .tick-box img, .step-miss .tick-box img, .step-extra .tick-box img {left: 1px; bottom: 1px; width: 18px; height: 18px;}
 
 .step-done .step-num, .step-done .mark {color: var(--olive);}
 .step-done .tick-box {border-color: var(--olive);}
 .step-none .tick-box, .step-skip .tick-box {border-style: dashed; border-color: var(--muted);}
 /* ให้คนดู / ตีกรอบไม่ครบ / กรอบเกิน : ช่องสีเหลืองอำพัน + ! */
 .step-unsure .tick-box, .step-miss .tick-box, .step-extra .tick-box {background: var(--amber); border-color: var(--amber);}
+/* สดรอยืนยัน : ช่องเขียว + ! (AI ว่าสด รอคนยืนยัน) */
+.step-check .tick-box {background: var(--olive); border-color: var(--olive);}
+.step-check .step-num, .step-check .mark {color: var(--olive);}
 .step-unsure .step-num, .step-unsure .mark, .step-miss .step-num, .step-miss .mark, .step-extra .step-num, .step-extra .mark {color: var(--amber);}
 /* ยังไม่เริ่ม : ช่องเป็นวงเส้นประจางๆ จะได้ไม่ดูเหมือนช่องให้กดติ๊ก */
 .step:not([class*="step-"]) .tick-box {border-style: dashed; border-color: var(--muted); border-radius: 50%;}
@@ -392,6 +395,8 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 .stamp-rotten {color: var(--rotten); border-color: var(--rotten);}
 /* ตราปั๊ม "ให้คนดู" / "ตรวจไม่ครบ" : เหลืองอำพัน เส้นประ */
 .stamp-unsure {color: var(--amber); border-color: var(--amber); border-style: dashed;}
+/* ตราปั๊ม "สดรอยืนยัน" : เขียว เส้นประ */
+.stamp-check {color: var(--olive); border-color: var(--olive); border-style: dashed;}
 /* ตราปั๊ม "ไม่เจอผลไม้" : หมึกดำ เส้นคู่ (ไม่ให้หน้าตาเหมือน "ให้คนดู") */
 .stamp-none {color: var(--ink); border: 4px double var(--ink);}
 /* ป้ายผลตรวจ : ป้ายคือตัวผลเอง ไม่ต้องมีการ์ดครอบอีกชั้น */
@@ -412,6 +417,7 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 .tag-warn {margin-top: 10px; color: var(--muted); font-size: 15px;}
 .tag-bad {color: var(--rotten); font-weight: 600;}   /* เลขลูกที่ต้องคัดออก */
 .tag-unsure {color: var(--amber); font-weight: 600;}   /* เลขลูกที่ให้คนดู */
+.tag-check {color: var(--olive); font-weight: 600;}    /* เลขลูกที่สดรอยืนยัน */
 /* ทางลัดสแกนรูปต่อไป (มือถือ) */
 .jump-next {display: none;}
 
@@ -480,7 +486,7 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
     .mark {font-size: 14px; line-height: 1.3; flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 6px;}
     .tick-box {width: 18px; height: 18px;}
     .tick-box img {width: 24px; height: 24px;}
-    .step-error .tick-box img, .step-bad .tick-box img, .step-unsure .tick-box img, .step-miss .tick-box img, .step-extra .tick-box img {width: 14px; height: 14px;}
+    .step-error .tick-box img, .step-bad .tick-box img, .step-unsure .tick-box img, .step-check .tick-box img, .step-miss .tick-box img, .step-extra .tick-box img {width: 14px; height: 14px;}
     /* ข้อความกำลังทำ บรรทัดเดียว หน้าไม่กระตุก */
     .mark-wait {font-size: 14px; gap: 6px; white-space: nowrap;}
     .mark-text {white-space: nowrap;}
@@ -535,6 +541,9 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 .fruit-state-good {color: var(--olive); font-weight: 600;}
 .fruit-state-bad {color: var(--rotten); font-weight: 600;}
 .fruit-state-unsure {color: var(--amber); font-weight: 600;}
+/* สดรอยืนยัน : เลขวงครีมขอบเขียวเส้นประ */
+.fruit-num.check {background: var(--paper); color: var(--olive); border: 2px dashed var(--olive);}
+.fruit-state-check {color: var(--olive); font-weight: 600;}
 /* รูปผลตรวจ : สูงตามรูป ไม่เกิน 560px */
 .frame.has-result {height: auto;}
 .frame.has-result .frame-photo {height: auto; max-height: 560px;}

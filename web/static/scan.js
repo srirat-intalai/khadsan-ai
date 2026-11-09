@@ -403,10 +403,11 @@ var cssColors = getComputedStyle(page);
 var liveColors = {
     good: cssColors.getPropertyValue("--olive").trim(),
     bad: cssColors.getPropertyValue("--rotten").trim(),
-    unsure: cssColors.getPropertyValue("--amber").trim()
+    unsure: cssColors.getPropertyValue("--amber").trim(),
+    check: cssColors.getPropertyValue("--olive").trim()   // สดรอยืนยัน = เขียวเส้นประ
 };
 var paperColor = cssColors.getPropertyValue("--paper").trim();
-var liveWords = { good: "สด", bad: "เน่า", unsure: "ให้คนดู" };
+var liveWords = { good: "สด", check: "รอยืนยัน", bad: "เน่า", unsure: "ให้คนดู" };
 
 liveBtn.addEventListener("click", function () {
     if (liveOn) {
@@ -521,7 +522,7 @@ function drawLiveBoxes(boxes) {
         ctx.lineWidth = 3;
         ctx.strokeStyle = liveColors[b.state];
         // ให้คนดู : เส้นประ
-        if (b.state == "unsure") {
+        if (b.state == "unsure" || b.state == "check") {
             ctx.setLineDash([10, 6]);
         }
         ctx.strokeRect(x, y, bw, bh);
@@ -592,6 +593,9 @@ function showLiveInfo(result) {
         text = "เห็น " + result.total + " ลูก";
         if (result.good > 0) {
             text = text + " · สด " + result.good;
+        }
+        if (result.check > 0) {
+            text = text + " · รอยืนยัน " + result.check;
         }
         if (result.bad > 0) {
             text = text + " · เน่า " + result.bad;

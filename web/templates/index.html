@@ -35,7 +35,7 @@
 </div>
 {% endmacro %}
 
-{# ===== 1 ข้อในเช็กลิสต์ : state = done / bad / unsure / miss / extra / none / skip / error / "" , wait = ข้อความตอนกำลังทำ ===== #}
+{# ===== 1 ข้อในเช็กลิสต์ : state = done / bad / unsure / check / miss / extra / none / skip / error / "" , wait = ข้อความตอนกำลังทำ ===== #}
 {% macro step(num, title, sub, state, wait) %}
 <div class="step{% if state %} step-{{ state }}{% endif %}">
     <div class="step-num">{{ num }}</div>
@@ -49,6 +49,7 @@
             {%- if state == "done" %}เสร็จแล้ว{% endif -%}
             {%- if state == "bad" %}ต้องคัดออก{% endif -%}
             {%- if state == "unsure" %}ให้คนดู{% endif -%}
+            {%- if state == "check" %}รอยืนยัน{% endif -%}
             {%- if state == "miss" %}ตีกรอบไม่ครบ{% endif -%}
             {%- if state == "extra" %}กรอบเกิน{% endif -%}
             {%- if state == "none" %}ไม่พบผลไม้{% endif -%}
@@ -70,6 +71,7 @@
         <div class="fruit-state">
             {% if f.state == "good" %}<span class="fruit-state-good">สด</span>
             {% elif f.state == "bad" %}<span class="fruit-state-bad">เน่า · คัดออก</span>
+            {% elif f.state == "check" %}<span class="fruit-state-check">สด · รอยืนยัน</span>
             {% else %}<span class="fruit-state-unsure">ให้คนดู</span>{% endif %}
             <span class="fruit-conf">· ความมั่นใจ {{ f.conf }}% <span class="nowrap">({{ f.level }})</span></span>
         </div>
@@ -104,7 +106,7 @@
             {# ปิดกล้องแยกไปไว้ขวาสุด กันกดพลาดตอนจะกดสแกนสด #}
             <button class="pill cam-close" type="button">ปิดกล้อง</button>
         </div>
-        <div class="cam-note">สแกนสด = เล็งกล้องค้างไว้ กรอบจะขึ้นตามผลไม้ (กรอบเหลืองเส้นประ = ให้คนดู) · อยากได้รายละเอียดทีละลูก กด "ถ่าย" แล้วตรวจ</div>
+        <div class="cam-note">สแกนสด = เล็งกล้องค้างไว้ กรอบจะขึ้นตามผลไม้ (กรอบเขียวเส้นประ = สด รอยืนยัน · กรอบเหลืองเส้นประ = ให้คนดู) · อยากได้รายละเอียดทีละลูก กด "ถ่าย" แล้วตรวจ</div>
     </div>
     <div class="cam-msg" role="alert" hidden></div>
 
@@ -169,8 +171,8 @@
         {% set s2 = "done" %}
         {# กรอกจำนวนลูกไว้ แต่จำนวนกรอบไม่ตรง : ขั้นที่ 2 ขึ้น ! #}
         {% if summary.missing > 0 %}{% set s2 = "miss" %}{% elif summary.extra > 0 %}{% set s2 = "extra" %}{% endif %}
-        {# ขั้นที่ 3 บอกเรื่องสำคัญสุดก่อน : คัดออก -> ให้คนดู -> เสร็จ #}
-        {% if summary.bad > 0 %}{% set s3 = "bad" %}{% elif summary.unsure > 0 %}{% set s3 = "unsure" %}{% else %}{% set s3 = "done" %}{% endif %}
+        {# ขั้นที่ 3 บอกเรื่องสำคัญสุดก่อน : คัดออก -> ให้คนดู -> สดรอยืนยัน -> เสร็จ #}
+        {% if summary.bad > 0 %}{% set s3 = "bad" %}{% elif summary.unsure > 0 %}{% set s3 = "unsure" %}{% elif summary.check > 0 %}{% set s3 = "check" %}{% else %}{% set s3 = "done" %}{% endif %}
     {% endif %}
 {% elif error %}
     {# รูปใช้ไม่ได้ : ขั้น 2-3 บอกว่าไม่ได้ตรวจ #}
@@ -214,6 +216,8 @@
                     <div class="stamp stamp-rotten">คัดออก {{ summary.bad }} ลูก</div>
                     {% elif summary.unsure > 0 %}
                     <div class="stamp stamp-unsure">ให้คนดู {{ summary.unsure }} ลูก</div>
+                    {% elif summary.check > 0 %}
+                    <div class="stamp stamp-check">รอยืนยัน {{ summary.check }} ลูก</div>
                     {% else %}
                     <div class="stamp">สดทั้งหมด</div>
                     {% endif %}
@@ -225,6 +229,9 @@
                     {# เลขลูกเขียนแบบเดียวกับเลขบนกรอบในรูป #}
                     <div class="tag-row"><span class="tag-key">คัดออก</span>{% if summary.bad_nums %}<span class="tag-line tag-bad">เลข {{ summary.bad_nums|join(", ") }}</span>{% else %}<span class="tag-line">ไม่มี</span>{% endif %}</div>
                     <div class="tag-row"><span class="tag-key">ให้คนดู</span>{% if summary.unsure_nums %}<span class="tag-line tag-unsure">เลข {{ summary.unsure_nums|join(", ") }}</span>{% else %}<span class="tag-line">ไม่มี</span>{% endif %}</div>
+                    {% if summary.check > 0 %}
+                    <div class="tag-row"><span class="tag-key">รอยืนยัน</span><span class="tag-line tag-check">เลข {{ summary.check_nums|join(", ") }}</span></div>
+                    {% endif %}
                     <div class="tag-row"><span class="tag-key">สด</span><span class="tag-line">{{ summary.good }} ลูก</span></div>
                     {% endif %}
                     {# จำนวนไม่ตรง : แถวเตือนเด่นในป้าย #}
@@ -254,7 +261,7 @@
             <div class="tag-warn">ลูกที่ไม่มีกรอบ AI ไม่ได้ตรวจ{% if summary.total >= 6 %} ผลไม้เยอะหรือซ้อนกัน AI อาจตีกรอบไม่ครบ{% endif %} · ใส่จำนวนลูกตอนสแกน เว็บจะเช็กให้ว่าครบไหม</div>
             {% endif %}
             {# โปรแกรมอ่านหน้าจอจะอ่านสรุปนี้ก่อนรายการ #}
-            <div class="sr-only" id="summary-text">ผลตรวจ: AI ตีกรอบได้ {{ summary.total }}{% if summary.expected %} จาก {{ summary.expected }}{% endif %} ลูก{% if summary.missing > 0 %} ตรวจไม่ครบ {{ summary.missing }} ลูก{% endif %}{% if summary.extra > 0 %} กรอบเกิน {{ summary.extra }} กรอบ{% endif %} คัดออก {{ summary.bad }} ลูก ให้คนดู {{ summary.unsure }} ลูก สด {{ summary.good }} ลูก ลูกที่ไม่มีกรอบ AI ไม่ได้ตรวจ</div>
+            <div class="sr-only" id="summary-text">ผลตรวจ: AI ตีกรอบได้ {{ summary.total }}{% if summary.expected %} จาก {{ summary.expected }}{% endif %} ลูก{% if summary.missing > 0 %} ตรวจไม่ครบ {{ summary.missing }} ลูก{% endif %}{% if summary.extra > 0 %} กรอบเกิน {{ summary.extra }} กรอบ{% endif %} คัดออก {{ summary.bad }} ลูก ให้คนดู {{ summary.unsure }} ลูก สดรอยืนยัน {{ summary.check }} ลูก สด {{ summary.good }} ลูก ลูกที่ไม่มีกรอบ AI ไม่ได้ตรวจ</div>
             {# มือถือ : ทางลัดไปสแกนรูปต่อไป (หน้าไม่เจอผลไม้มีปุ่มถ่ายใหม่แล้ว) #}
             {% if summary.total > 0 %}<a class="jump-next" href="#next">สแกนรูปต่อไป ↓</a>{% endif %}
         </div>
@@ -284,17 +291,18 @@
         {% endif %}
 
         <!-- AI ตัดสินจากอะไร (พับไว้ เปิดเองเฉพาะตอนมีลูกให้คนดู หรือจำนวนกรอบไม่ตรง) -->
-        <details class="card r-why"{% if summary.unsure > 0 or summary.missing > 0 or summary.extra > 0 %} open{% endif %}>
+        <details class="card r-why"{% if summary.unsure > 0 or summary.check > 0 or summary.missing > 0 or summary.extra > 0 %} open{% endif %}>
             <summary class="card-title">AI ตัดสินจากอะไร</summary>
             <ul class="why-list">
                 <li><b>เรียนจากรูปจริง</b> โมเดล YOLOv8 ฝึกจากรูปผลไม้ 1,624 รูปที่คนติดป้ายไว้แล้วว่าลูกไหนสด ลูกไหนเน่า และรูปเสริมอีกราว 3,300 รูป</li>
                 <li><b>บอกชนิด</b> ดูรูปทรงและสีของแต่ละลูก</li>
                 <li><b>บอกสด/เน่า</b> ดูผิว ในรูปเน่าที่ใช้สอน AI มักมีจุดคล้ำ รอยช้ำ รา ผิวเหี่ยว หรือสีเปลี่ยน</li>
-                <li><b>% ความมั่นใจ</b> ยิ่งสูง AI ยิ่งแน่ใจ แต่ละลูกได้ 1 ใน 3 ผล
+                <li><b>% ความมั่นใจ</b> คือ AI แน่ใจในคำตอบของตัวเองแค่ไหน (ไม่ใช่สดกี่ %) แต่ละลูกได้ 1 ใน 4 ผล
                     <ul class="why-rules">
                         <li><b>สด</b> AI ว่าสด และมั่นใจตั้งแต่ {{ high_conf }}%</li>
+                        <li><b>สด · รอยืนยัน</b> AI ว่าสด มั่นใจ {{ low_conf }}–{{ high_conf - 1 }}% ให้คนยืนยันก่อนส่ง</li>
                         <li><b>คัดออก</b> AI ว่าเน่า และมั่นใจตั้งแต่ {{ low_conf }}% (คัดออกไว้ก่อน ดีกว่าปล่อยลูกเน่าหลุด)</li>
-                        <li><b>ให้คนดู</b> AI มั่นใจไม่ถึง {{ low_conf }}% หรือว่าสดแต่มั่นใจไม่ถึง {{ high_conf }}%</li>
+                        <li><b>ให้คนดู</b> AI มั่นใจไม่ถึง {{ low_conf }}% ไม่ว่าจะทายว่าสดหรือเน่า</li>
                     </ul>
                 </li>
                 <li><b>ข้อจำกัด</b> AI เห็นแค่รูป ไม่ได้ดมกลิ่นหรือกดดูความนิ่ม ผลไม้นอก 5 ชนิด รูปเบลอ หรือแสงน้อย อาจทายผิดได้</li>
@@ -311,6 +319,7 @@
             {% set legend = [] %}
             {% if summary.good > 0 %}{% set _ = legend.append("กรอบเขียว เลขพื้นขาว = สด") %}{% endif %}
             {% if summary.bad > 0 %}{% set _ = legend.append("กรอบอิฐ เลขพื้นทึบ = คัดออก") %}{% endif %}
+            {% if summary.check > 0 %}{% set _ = legend.append("กรอบเขียวเส้นประ = สด รอยืนยัน") %}{% endif %}
             {% if summary.unsure > 0 %}{% set _ = legend.append("กรอบเหลืองเส้นประ = ให้คนดู") %}{% endif %}
             <div class="card-sub">{% for l in legend %}<span class="nowrap">{{ l }}</span>{% if not loop.last %} · {% endif %}{% endfor %}</div>
             {% else %}<div class="card-sub">รูปที่ใส่เข้ามา</div>{% endif %}
