@@ -3,7 +3,7 @@
 #   LR คงที่ vs Cosine / batch 16 vs 32 / weight decay vs ไม่มี (ทุกตัวใช้ Early Stopping)
 # ผลที่ได้ : models/ (เอาไปใส่ web/models/) และ results/ (กราฟ ตาราง)
 # วิธีรัน : python train_yolo.py --data datasets/data_5fruits/data.yaml --out โฟลเดอร์ผล
-#   ตัวเลือก : --external --more-data --only --new-test --same-source-test --team-test --compare --quick
+#   ตัวเลือก : --external --more-data --only --new-test --same-source-test --compare --quick
 #   คำสั่งของแต่ละรอบดูใน docs/train-model.md และโน้ตบุ๊ก train_roundN.ipynb
 
 import os
@@ -36,7 +36,6 @@ ONLY = []               # รันแค่การทดลองที่ร
 NEW_TEST_DIR = ""       # รอบ 3 : ข้อสอบอิสระที่มีกรอบ
 SAME_SOURCE_DIR = ""    # รอบ 3 : ข้อสอบชุดถ่ายเดียวกับชุดเทรน (ไม่ใช่ข้อสอบอิสระ)
 COMPARE = {}            # โมเดลเก่าไว้เทียบ ชื่อ -> best.pt
-TEAM_TEST_DIR = ""      # รอบ 4 : ข้อสอบชุดรูปที่ทีมรวบรวมเพิ่ม (ไม่มีกรอบ)
 
 QUICK_TEST = False
 for i in range(len(sys.argv)):
@@ -58,8 +57,6 @@ for i in range(len(sys.argv)):
         for pair in sys.argv[i + 1].split(","):
             name, path = pair.split("=")
             COMPARE[name.strip()] = path.strip()
-    if sys.argv[i] == "--team-test":
-        TEAM_TEST_DIR = sys.argv[i + 1]
     if sys.argv[i] == "--quick":
         QUICK_TEST = True
 
@@ -100,13 +97,8 @@ EXPERIMENTS = [
     {"name": "10_new_data", "model": "yolov8n.pt", "optimizer": "SGD", "lr0": 0.01, "cos_lr": True, "lrf": 0.01, "batch": 16, "weight_decay": 0.0005, "more_data": True, "seed": 42},
     {"name": "11_new_data_seed2", "model": "yolov8n.pt", "optimizer": "SGD", "lr0": 0.01, "cos_lr": True, "lrf": 0.01, "batch": 16, "weight_decay": 0.0005, "more_data": True, "seed": 2},
     {"name": "12_new_data_seed3", "model": "yolov8n.pt", "optimizer": "SGD", "lr0": 0.01, "cos_lr": True, "lrf": 0.01, "batch": 16, "weight_decay": 0.0005, "more_data": True, "seed": 3},
-    # รอบ 4 : ค่าเดียวกับ 10-12 + รูปมะนาว/ทับทิมของทีม (kaggle_boxes_v4)
-    {"name": "13_team_data", "model": "yolov8n.pt", "optimizer": "SGD", "lr0": 0.01, "cos_lr": True, "lrf": 0.01, "batch": 16, "weight_decay": 0.0005, "more_data": True, "seed": 42},
-    {"name": "14_team_data_seed2", "model": "yolov8n.pt", "optimizer": "SGD", "lr0": 0.01, "cos_lr": True, "lrf": 0.01, "batch": 16, "weight_decay": 0.0005, "more_data": True, "seed": 2},
-    {"name": "15_team_data_seed3", "model": "yolov8n.pt", "optimizer": "SGD", "lr0": 0.01, "cos_lr": True, "lrf": 0.01, "batch": 16, "weight_decay": 0.0005, "more_data": True, "seed": 3},
 ]
 SEED_RUNS = ["10_new_data", "11_new_data_seed2", "12_new_data_seed3"]
-SEED_RUNS_4 = ["13_team_data", "14_team_data_seed2", "15_team_data_seed3"]
 
 
 # ===== อ่านชื่อคลาสจาก data.yaml =====
@@ -457,8 +449,8 @@ def mean_and_spread(values):
     return round(mean, 4), round(spread, 4)
 
 
-# runs = 3 seed ของรอบนั้น / team_rows = ผลชุดของทีม (รอบ 4)
-def write_seed_summary(summary, new_rows, runs=SEED_RUNS, file_name="seed_summary.md", team_rows=[]):
+# runs = 3 seed ของรอบนั้น
+def write_seed_summary(summary, new_rows, runs=SEED_RUNS, file_name="seed_summary.md"):
     rows = []
     for r in summary:
         if r["name"] in runs:
@@ -480,14 +472,6 @@ def write_seed_summary(summary, new_rows, runs=SEED_RUNS, file_name="seed_summar
         if len(values) == len(rows):
             mean, spread = mean_and_spread(values)
             lines.append("| F1 " + set_name + " | " + " | ".join(str(v) for v in values) + " | " + str(mean) + " ± " + str(spread) + " |")
-    values = []
-    for r in rows:
-        for t in team_rows:
-            if t["model"] == r["name"]:
-                values.append(float(t["accuracy"]))
-    if len(team_rows) > 0 and len(values) == len(rows):
-        mean, spread = mean_and_spread(values)
-        lines.append("| ทายถูก team_collected_test | " + " | ".join(str(v) for v in values) + " | " + str(mean) + " ± " + str(spread) + " |")
     with open(os.path.join(RESULT_DIR, file_name), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
     print("\n".join(lines))
@@ -586,31 +570,7 @@ if len(test_sets) > 0:
                 for n in new_rows:
                     writer.writerow(n)
 
-# รอบ 4 : สอบชุดของทีม ทุกโมเดล (ทำแล้วข้าม)
-TEAM_TEST_FILE = os.path.join(RESULT_DIR, "team_tests.csv")
-TEAM_TEST_HEAD = ["model", "images", "accuracy", "fruit_correct", "fresh_rotten_correct", "not_found", "rotten_called_fresh", "rotten_images"]
-team_rows = []
-if os.path.exists(TEAM_TEST_FILE):
-    with open(TEAM_TEST_FILE, encoding="utf-8") as f:
-        for row in csv.DictReader(f):
-            team_rows.append(row)
-if TEAM_TEST_DIR != "" and os.path.isdir(TEAM_TEST_DIR):
-    for name in models:
-        done = False
-        for t in team_rows:
-            if t["model"] == name:
-                done = True
-        if done:
-            continue
-        team_rows.append(test_external(models[name], name, TEAM_TEST_DIR, "team_test"))
-        with open(TEAM_TEST_FILE, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=TEAM_TEST_HEAD)
-            writer.writeheader()
-            for t in team_rows:
-                writer.writerow(t)
-
 write_seed_summary(summary, new_rows)
-write_seed_summary(summary, new_rows, SEED_RUNS_4, "seed_summary_round4.md", team_rows)
 
 # กราฟเปรียบเทียบไว้ใส่รายงาน
 plot_compare(["1_scratch_sgd", "2_pretrained_sgd"], "compare_scratch_vs_pretrained.png", "Scratch vs Pretrained")
@@ -621,7 +581,6 @@ plot_compare(["2_pretrained_sgd", "7_no_weight_decay"], "compare_weight_decay.pn
 plot_compare(["5_cosine_lr", "8_cosine_more_data"], "compare_more_data.png", "Original data vs + Kaggle images")
 plot_compare(["4_rmsprop", "9_rmsprop_low_lr"], "compare_rmsprop_lr.png", "RMSProp lr 0.001 vs 0.0001")
 plot_compare(SEED_RUNS, "compare_seeds.png", "Same settings, 3 seeds")
-plot_compare(SEED_RUNS_4, "compare_seeds_round4.png", "Round 4 (+ team-collected images), 3 seeds")
 all_names = []
 for e in EXPERIMENTS:
     all_names.append(e["name"])
