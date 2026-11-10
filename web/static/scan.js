@@ -21,6 +21,13 @@ var stage = document.querySelector(".frame-empty");
 var stageSub = document.querySelector(".frame-sub");
 
 
+// ยังไม่เลือกรูปแล้วกดตรวจ : เบราว์เซอร์เตือนเป็นภาษาไทย
+var NO_FILE_TEXT = "เลือกรูปหรือถ่ายรูปผลไม้ก่อนนะ";
+if (input.files.length == 0) {
+    input.setCustomValidity(NO_FILE_TEXT);
+}
+
+
 // ----- 1) และ 2) ตอนเลือกรูป -----
 input.addEventListener("change", function () {
     var file = input.files[0];
@@ -29,6 +36,7 @@ input.addEventListener("change", function () {
 
     // ไม่ได้เลือกรูป (กดยกเลิก)
     if (!file) {
+        input.setCustomValidity(NO_FILE_TEXT);
         if (preview) {
             preview.hidden = true;
         }
@@ -322,6 +330,72 @@ input.addEventListener("click", function () {
 });
 
 
+// ----- 4.5) ดูรูปผลตรวจขนาดเต็ม (ผลไม้เยอะ เลขเล็ก ซูมดูในแท็บใหม่) -----
+// รูปผลเป็น data URL เบราว์เซอร์ไม่ให้เปิดตรงๆ เลยแปลงเป็น blob ก่อน
+var zoomBtn = document.querySelector(".zoom-btn");
+var resultPhoto = document.querySelector(".has-result .frame-photo");
+function openFullPhoto() {
+    fetch(resultPhoto.src)
+        .then(function (res) { return res.blob(); })
+        .then(function (blob) { window.open(URL.createObjectURL(blob), "_blank"); });
+}
+if (zoomBtn && resultPhoto) {
+    zoomBtn.hidden = false;
+    zoomBtn.addEventListener("click", openFullPhoto);
+    resultPhoto.addEventListener("click", openFullPhoto);
+}
+
+
+// ----- 4.6) แตะเลข (ในป้าย / ในรายการ) แล้วเห็นลูกนั้นในรูป -----
+var calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+var spotTimer = null;
+function showSpot(num) {
+    var spot = document.querySelector('.spot[data-num="' + num + '"]');
+    if (!spot) {
+        return;
+    }
+    var all = document.querySelectorAll(".spot");
+    for (var i = 0; i < all.length; i++) {
+        all[i].classList.remove("on");
+    }
+    spot.classList.add("on");
+    // เลื่อนให้เห็นรูป (ตั้งลดการเคลื่อนไหว = กระโดดไปเลย)
+    document.querySelector(".has-result").scrollIntoView({ block: "center", behavior: calm ? "auto" : "smooth" });
+    live.textContent = "ลูกเลข " + num + " คือกรอบที่ไฮไลต์อยู่ในรูป";
+    clearTimeout(spotTimer);
+    spotTimer = setTimeout(function () {
+        spot.classList.remove("on");
+    }, 3000);
+}
+var numButtons = document.querySelectorAll(".num-link, button.fruit-num");
+for (var n = 0; n < numButtons.length; n++) {
+    numButtons[n].addEventListener("click", function () {
+        showSpot(this.getAttribute("data-num"));
+    });
+}
+
+
+// ----- 4.7) ปุ่ม "สแกนถาดต่อไป" ติดล่างจอ (มือถือ) -----
+// กดแล้วเลื่อนไปฟอร์มสแกนต่อ และเปิดหน้าต่างเลือก/ถ่ายรูปเลย
+var nextBar = document.querySelector(".next-bar");
+var nextCard = document.getElementById("next");
+if (nextBar && nextCard) {
+    nextBar.addEventListener("click", function () {
+        input.click();
+        // เลือกรูปแล้ว : เลื่อนไปที่ปุ่มตรวจ
+        input.addEventListener("change", function () {
+            button.scrollIntoView({ block: "center", behavior: calm ? "auto" : "smooth" });
+        }, { once: true });
+    });
+    // ฟอร์มสแกนต่ออยู่บนจอแล้ว ซ่อนปุ่ม จะได้ไม่ซ้ำกัน
+    if ("IntersectionObserver" in window) {
+        new IntersectionObserver(function (entries) {
+            nextBar.classList.toggle("away", entries[0].isIntersecting);
+        }).observe(nextCard);
+    }
+}
+
+
 // ----- 5) ได้ผลแล้ว : ติ๊กขั้นตอนทีละขั้น แล้วค่อยโชว์ผล -----
 // เล่นเมื่อ html มี class "play" (มีผลตรวจ)
 // ครั้งแรกเล่น ~1.5 วิ ให้เห็นว่า AI ทำอะไร (ไม่ให้รอนาน) / ครั้งต่อไปราวครึ่งวิ
@@ -406,7 +480,7 @@ var liveColors = {
     check: cssColors.getPropertyValue("--olive").trim()   // ให้ตรวจซ้ำ = เขียวเส้นประ
 };
 var paperColor = cssColors.getPropertyValue("--paper").trim();
-var liveWords = { good: "สด", check: "ตรวจซ้ำ", bad: "เน่า" };
+var liveWords = { good: "สด", check: "ให้ตรวจซ้ำ", bad: "เน่า" };
 
 liveBtn.addEventListener("click", function () {
     if (liveOn) {
@@ -594,7 +668,7 @@ function showLiveInfo(result) {
             text = text + " · สด " + result.good;
         }
         if (result.check > 0) {
-            text = text + " · ตรวจซ้ำ " + result.check;
+            text = text + " · ให้ตรวจซ้ำ " + result.check;
         }
         if (result.bad > 0) {
             text = text + " · เน่า " + result.bad;

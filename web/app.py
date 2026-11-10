@@ -22,7 +22,6 @@ HIGH_CONF = 70          # ว่าสดต้องมั่นใจตั้
 MAX_FRUITS = 30         # โชว์รายการไม่เกินกี่ลูก
 MAX_COUNT = 300         # ช่อง "ในถาดมีกี่ลูก" รับได้ไม่เกินนี้
 SAME_FRUIT = 0.5        # กรอบทับกันเกินครึ่ง = ลูกเดียวกัน
-AGAIN_CONF = 0.25       # ตรวจรอบสอง (กรอกจำนวนแล้วยังขาด) ยอมรับกรอบที่มั่นใจต่ำลงมาถึงนี้
 
 # ชื่อไทยของผลไม้ 5 ชนิด
 THAI_NAMES = {
@@ -103,8 +102,7 @@ def color_mean(img):
     small.thumbnail((IMG_SIZE, IMG_SIZE))   # ย่อด้านยาวเป็น IMG_SIZE แบบไม่บีบ
     result = []
     for band in small.split():
-        pixels = list(band.getdata())
-        result.append(round(sum(pixels) / len(pixels)))
+        result.append(round(ImageStat.Stat(band).mean[0]))   # ค่าเฉลี่ยของสีนั้นทั้งรูป
     return result, small.size
 
 
@@ -124,9 +122,9 @@ def load_model():
 
 
 # หาผลไม้ในรูป เรียงบนลงล่าง ซ้ายไปขวา
-def detect(img, min_conf=CONF_MIN):
+def detect(img):
     # agnostic_nms : ลูกเดียวโดนตีกรอบ 2 ชนิด ให้เหลือกรอบเดียว
-    result = load_model().predict(img, imgsz=IMG_SIZE, conf=min_conf, iou=SAME_FRUIT,
+    result = load_model().predict(img, imgsz=IMG_SIZE, conf=CONF_MIN, iou=SAME_FRUIT,
                                   agnostic_nms=True, max_det=100, verbose=False)[0]
     fruits = []
     for i in range(len(result.boxes)):
@@ -144,7 +142,7 @@ def detect(img, min_conf=CONF_MIN):
         else:
             state = "good"
         fruits.append({"fruit": fruit, "thai": THAI_NAMES.get(fruit, fruit), "quality": quality,
-                       "conf": round(conf), "box": box, "state": state, "again": False})   # % ปัดเป็นเลขกลม
+                       "conf": round(conf), "box": box, "state": state})   # % ปัดเป็นเลขกลม
     return number_fruits(fruits)
 
 
@@ -193,30 +191,6 @@ def box_color(f):
     if f["state"] == "bad":
         return COLOR_BAD
     return COLOR_GOOD          # สด / ให้ตรวจซ้ำ = เขียว (ให้ตรวจซ้ำใช้เส้นประ)
-
-
-# ตรวจรอบสอง : คนกรอกจำนวนลูกไว้ แต่ AI ตีกรอบได้ไม่ครบ
-# ให้ AI ดูรูปเดิมอีกรอบโดยยอมรับกรอบที่มั่นใจต่ำลง (AGAIN_CONF) แล้วเติมเฉพาะลูกที่ยังไม่มีกรอบ
-# เติมไม่เกินจำนวนที่ขาด (กันตีกรอบมั่ว) ลูกที่เจอรอบสองใช้กฎเดิม : ว่าเน่า = คัดออก / ว่าสด = ให้ตรวจซ้ำ (มั่นใจต่ำ)
-def find_more(img, fruits, missing):
-    more = detect(img, AGAIN_CONF)
-    more.sort(key=lambda f: f["conf"], reverse=True)   # มั่นใจมากก่อน
-    added = 0
-    for f in more:
-        if added >= missing:
-            break
-        # ทับกรอบเดิมเกินครึ่ง = ลูกเดิม ข้าม
-        same = False
-        for old in fruits:
-            if overlap(f, old) > min(box_area(f), box_area(old)) * SAME_FRUIT:
-                same = True
-                break
-        if same:
-            continue
-        f["again"] = True
-        fruits.append(f)
-        added = added + 1
-    return number_fruits(fruits), added
 
 
 # วาดกรอบ + เลขลงบนรูป (เลขตรงกับรายการในหน้าเว็บ)
@@ -315,21 +289,6 @@ def add_details(img, fruits):
         crop = img.crop([x1, y1, x2, y2])
         f["thumb"] = to_base64(crop, max_size=120)
 
-        # ระดับความมั่นใจเป็นคำพูด
-        if f["conf"] >= HIGH_CONF:
-            f["level"] = "มั่นใจสูง"
-        elif f["conf"] >= 50:
-            f["level"] = "มั่นใจพอใช้"
-        else:
-            f["level"] = "มั่นใจต่ำ"
-
-        # เหตุผล : เฉพาะลูกที่ให้ตรวจซ้ำ หรือเจอตอนตรวจรอบสอง ว่าทำไม
-        f["reason"] = ""
-        if f["again"]:
-            f["reason"] = "AI หาเจอตอนตรวจรอบสอง (มั่นใจแค่ " + str(f["conf"]) + "%) ตรวจซ้ำว่าเป็นผลไม้จริงไหม สดหรือเน่า"
-        elif f["state"] == "check":
-            f["reason"] = "AI ว่าสด แต่มั่นใจไม่ถึง " + str(HIGH_CONF) + "% ตรวจซ้ำก่อนส่ง ถ้าเน่าจริงจะได้ไม่หลุดถึงลูกค้า"
-
         # สิ่งที่อาจทำให้ AI มั่นใจน้อยลง
         notes = []
         if f["conf"] < HIGH_CONF:
@@ -424,21 +383,24 @@ def scan():
     # ให้โมเดลตรวจ (พังก็ไม่โชว์ error ดิบ) ถ้าโมเดลกำลังตรวจงานอื่นอยู่ รอจนเสร็จ
     try:
         count = read_count(request.form.get("count"))
-        again = 0
         with model_lock:
             fruits = detect(img)
-            # กรอกจำนวนไว้แต่ยังขาด : ตรวจรอบสองหาลูกที่หลุด
-            if count is not None and len(fruits) < count:
-                fruits, again = find_more(img, fruits, count - len(fruits))
     except Exception:
         return render_template("index.html", photo=to_base64(img), error="ตอนนี้ AI ตรวจไม่ได้ ลองใหม่อีกครั้งนะ")
 
     add_details(img, fruits)
     summary = count_states(fruits)
     compare_count(summary, count)
-    summary["again"] = again   # รอบสองเจอเพิ่มกี่ลูก
     photo = to_base64(draw_boxes(img, fruits), max_size=1200)
     rgb, small_size = color_mean(img)
+
+    # ตำแหน่งกรอบเป็น % ของรูป : หน้าเว็บใช้ไฮไลต์ลูกในรูปตอนแตะเลข
+    width, height = img.size
+    for f in fruits:
+        f["left"] = round(f["box"][0] / width * 100, 2)
+        f["top"] = round(f["box"][1] / height * 100, 2)
+        f["width"] = round((f["box"][2] - f["box"][0]) / width * 100, 2)
+        f["height"] = round((f["box"][3] - f["box"][1]) / height * 100, 2)
 
     # ลูกเน่าขึ้นก่อน
     fruits.sort(key=list_order)
@@ -446,7 +408,7 @@ def scan():
     if more < 0:
         more = 0
     return render_template("index.html",
-        photo=photo, fruits=fruits[:MAX_FRUITS], more=more, summary=summary,
+        photo=photo, fruits=fruits[:MAX_FRUITS], spots=fruits, more=more, summary=summary,
         rgb=rgb, small_size=small_size, original_size=img.size,
         min_conf=round(CONF_MIN * 100), high_conf=HIGH_CONF)
 
