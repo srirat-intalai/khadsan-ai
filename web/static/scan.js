@@ -501,6 +501,12 @@ if (page.classList.contains("play")) {
         skipRow.querySelector(".skip-anim").addEventListener("click", showResult);
     }
     nextStep();
+} else if (document.getElementById("summary-text")) {
+    // ตั้งลดการเคลื่อนไหว (ไม่เล่นติ๊ก) : ยังต้องย้ายโฟกัสและอ่านสรุปผลให้
+    // รอหน้าโหลดเสร็จก่อน (ตอนกระโดดไป #scan เบราว์เซอร์จะดึงโฟกัสกลับ)
+    window.addEventListener("load", function () {
+        setTimeout(showResult, 100);
+    });
 }
 
 

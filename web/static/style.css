@@ -160,8 +160,8 @@ h1, h2, h3 {font-family: 'Mitr', sans-serif;}
 .step-check .step-num, .step-check .mark {color: var(--amber);}
 .step-miss .step-num, .step-miss .mark, .step-extra .step-num, .step-extra .mark {color: var(--rotten);}
 /* ไม่รู้ว่าครบไหม (ไม่ได้กรอกจำนวน) : ช่องเส้นประสีหมึก ไม่ติ๊ก */
-.step-unknown .tick-box {border-style: dashed;}
-.step-unknown .step-num, .step-unknown .mark {color: var(--ink);}
+.step-unknown .tick-box, .step-partial .tick-box {border-style: dashed;}
+.step-unknown .step-num, .step-unknown .mark, .step-partial .step-num, .step-partial .mark {color: var(--ink);}
 /* ยังไม่เริ่ม : ช่องเป็นวงเส้นประจางๆ จะได้ไม่ดูเหมือนช่องให้กดติ๊ก */
 .step:not([class*="step-"]) .tick-box {border-style: dashed; border-color: var(--muted); border-radius: 50%;}
 /* มีผลแล้ว : ซ่อนคำอธิบายย่อย แถบขั้นตอนเหลือบรรทัดเดียว */
@@ -586,7 +586,7 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 /* พื้นที่กดใหญ่กว่าตัวเลข (ราว 44px) แต่ไม่ดันบรรทัดให้สูงขึ้น */
 .num-link::after {content: ""; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%);}
 button.fruit-num {position: relative;}
-button.fruit-num::after {content: ""; position: absolute; inset: -6px;}
+button.fruit-num::after {content: ""; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%);}   /* วงมีขอบก็ยังได้ 44px */
 .num-link:focus-visible, button.fruit-num:focus-visible {outline: 2px solid var(--olive); outline-offset: 2px; border-radius: 4px;}
 button.fruit-num {border: none; padding: 0; font: inherit; font-weight: 600; cursor: pointer;}
 a.tag-hint {color: var(--muted); text-decoration: underline; text-underline-offset: 3px;}

@@ -35,7 +35,7 @@
 </div>
 {% endmacro %}
 
-{# ===== 1 ข้อในเช็กลิสต์ : state = done / bad / check / miss / extra / unknown / none / skip / error / "" , wait = ข้อความตอนกำลังทำ ===== #}
+{# ===== 1 ข้อในเช็กลิสต์ : state = done / bad / check / miss / extra / unknown / partial / none / skip / error / "" , wait = ข้อความตอนกำลังทำ ===== #}
 {% macro step(num, title, sub, state, wait) %}
 <div class="step{% if state %} step-{{ state }}{% endif %}">
     <div class="step-num">{{ num }}</div>
@@ -52,6 +52,7 @@
             {%- if state == "miss" %}ตีกรอบไม่ครบ{% endif -%}
             {%- if state == "extra" %}กรอบเกิน{% endif -%}
             {%- if state == "unknown" %}ไม่รู้ว่าครบไหม{% endif -%}
+            {%- if state == "partial" %}ตรวจแค่ในกรอบ{% endif -%}
             {%- if state == "none" %}ไม่พบผลไม้{% endif -%}
             {%- if state == "skip" %}ไม่ได้ตรวจ{% endif -%}
             {%- if state == "error" %}ใช้รูปนี้ไม่ได้{% endif -%}
@@ -99,8 +100,8 @@
 {%- elif summary.extra > 0 -%}
 <div class="stamp stamp-warn">กรอบเกิน {{ summary.extra }} กรอบ</div>
 {%- elif summary.bad > 0 -%}
-{# % เน่าของลูกที่ตีกรอบได้ทั้งหมด (ไว้เทียบแต่ละล็อต) #}
-<div class="stamp stamp-rotten">คัดออก {{ summary.bad }} ลูก ({{ summary.bad_percent }}%)</div>
+{# "4 จาก 8 ลูก (50%)" : บอกจำนวนด้วย คนจะไม่อ่าน % เป็นความมั่นใจ (% = ลูกเน่าในลูกที่ตีกรอบได้ ไว้เทียบแต่ละล็อต) #}
+<div class="stamp stamp-rotten">คัดออก {{ summary.bad }} จาก {{ summary.total }} ลูก ({{ summary.bad_percent }}%)</div>
 {%- elif summary.check > 0 -%}
 <div class="stamp stamp-check">ให้ตรวจซ้ำ {{ summary.check }} ลูก</div>
 {%- elif summary.expected -%}
@@ -203,7 +204,8 @@
         {# ไม่ได้กรอก : ไม่รู้ว่ามีลูกไหนไม่มีกรอบ #}
         {% if summary.missing > 0 %}{% set s2 = "miss" %}{% elif summary.extra > 0 %}{% set s2 = "extra" %}{% elif not summary.expected %}{% set s2 = "unknown" %}{% endif %}
         {# ขั้นที่ 3 บอกเรื่องสำคัญสุดก่อน : คัดออก -> ให้ตรวจซ้ำ -> เสร็จ #}
-        {% if summary.bad > 0 %}{% set s3 = "bad" %}{% elif summary.check > 0 %}{% set s3 = "check" %}{% else %}{% set s3 = "done" %}{% endif %}
+        {# ไม่ได้นับจำนวน : ตรวจได้แค่ลูกที่มีกรอบ เลยไม่ติ๊กเขียว (กันคนเข้าใจว่าทั้งถาดเรียบร้อย) #}
+        {% if summary.bad > 0 %}{% set s3 = "bad" %}{% elif summary.check > 0 %}{% set s3 = "check" %}{% elif s2 == "unknown" %}{% set s3 = "partial" %}{% else %}{% set s3 = "done" %}{% endif %}
     {% endif %}
 {% elif error %}
     {# รูปใช้ไม่ได้ : ขั้น 2-3 บอกว่าไม่ได้ตรวจ #}
