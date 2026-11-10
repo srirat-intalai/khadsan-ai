@@ -35,7 +35,7 @@
 </div>
 {% endmacro %}
 
-{# ===== 1 ข้อในเช็กลิสต์ : state = done / bad / check / miss / extra / none / skip / error / "" , wait = ข้อความตอนกำลังทำ ===== #}
+{# ===== 1 ข้อในเช็กลิสต์ : state = done / bad / check / miss / extra / unknown / none / skip / error / "" , wait = ข้อความตอนกำลังทำ ===== #}
 {% macro step(num, title, sub, state, wait) %}
 <div class="step{% if state %} step-{{ state }}{% endif %}">
     <div class="step-num">{{ num }}</div>
@@ -51,6 +51,7 @@
             {%- if state == "check" %}ให้ตรวจซ้ำ{% endif -%}
             {%- if state == "miss" %}ตีกรอบไม่ครบ{% endif -%}
             {%- if state == "extra" %}กรอบเกิน{% endif -%}
+            {%- if state == "unknown" %}ไม่รู้ว่าครบไหม{% endif -%}
             {%- if state == "none" %}ไม่พบผลไม้{% endif -%}
             {%- if state == "skip" %}ไม่ได้ตรวจ{% endif -%}
             {%- if state == "error" %}ใช้รูปนี้ไม่ได้{% endif -%}
@@ -85,6 +86,29 @@
 <span class="tag-line {{ cls }}">{{ nums|length }} ลูก <a class="tag-hint" href="#fruit-list">ดูเลขในรายการทีละลูก</a></span>
 {%- else -%}
 <span class="tag-line {{ cls }}">เลข {% for n in nums %}<button class="num-link" type="button" data-num="{{ n }}" aria-label="ดูลูกเลข {{ n }} ในรูป">{{ n }}</button>{% if not loop.last %}, {% endif %}{% endfor %}</span>
+{%- endif -%}
+{% endmacro %}
+
+{# ===== ตราปั๊มบอกว่าต้องทำอะไร (ใช้ในป้าย และตราเล็กเหนือรูปบนมือถือ) ===== #}
+{% macro verdict(summary) %}
+{%- if summary.total == 0 -%}
+<div class="stamp stamp-none">ไม่เจอผลไม้</div>
+{%- elif summary.missing > 0 -%}
+{# จำนวนกรอบไม่ตรงกับที่นับ : เรื่องนี้สำคัญกว่า เพราะลูกที่ไม่มีกรอบอาจเน่า #}
+<div class="stamp stamp-warn">ตรวจไม่ครบ {{ summary.missing }} ลูก</div>
+{%- elif summary.extra > 0 -%}
+<div class="stamp stamp-warn">กรอบเกิน {{ summary.extra }} กรอบ</div>
+{%- elif summary.bad > 0 -%}
+{# % เน่าของลูกที่ตีกรอบได้ทั้งหมด (ไว้เทียบแต่ละล็อต) #}
+<div class="stamp stamp-rotten">คัดออก {{ summary.bad }} ลูก ({{ summary.bad_percent }}%)</div>
+{%- elif summary.check > 0 -%}
+<div class="stamp stamp-check">ให้ตรวจซ้ำ {{ summary.check }} ลูก</div>
+{%- elif summary.expected -%}
+{# นับไว้แล้วตรงกับจำนวนกรอบ = ตราเขียว "สด 8/8 ลูก" #}
+<div class="stamp">สด {{ summary.good }}/{{ summary.expected }} ลูก</div>
+{%- else -%}
+{# ไม่ได้นับ : ไม่รู้ว่ามีลูกนอกกรอบไหม เลยใช้ตราหมึกดำเส้นประ ไม่ใช่ตราเขียว #}
+<div class="stamp stamp-unsure">สด {{ summary.good }} ลูก<small>ยังไม่ได้นับทั้งถาด</small></div>
 {%- endif -%}
 {% endmacro %}
 
@@ -176,7 +200,8 @@
     {% else %}
         {% set s2 = "done" %}
         {# กรอกจำนวนลูกไว้ แต่จำนวนกรอบไม่ตรง : ขั้นที่ 2 ขึ้น ! #}
-        {% if summary.missing > 0 %}{% set s2 = "miss" %}{% elif summary.extra > 0 %}{% set s2 = "extra" %}{% endif %}
+        {# ไม่ได้กรอก : ไม่รู้ว่ามีลูกไหนไม่มีกรอบ #}
+        {% if summary.missing > 0 %}{% set s2 = "miss" %}{% elif summary.extra > 0 %}{% set s2 = "extra" %}{% elif not summary.expected %}{% set s2 = "unknown" %}{% endif %}
         {# ขั้นที่ 3 บอกเรื่องสำคัญสุดก่อน : คัดออก -> ให้ตรวจซ้ำ -> เสร็จ #}
         {% if summary.bad > 0 %}{% set s3 = "bad" %}{% elif summary.check > 0 %}{% set s3 = "check" %}{% else %}{% set s3 = "done" %}{% endif %}
     {% endif %}
@@ -207,6 +232,8 @@
         <!-- รูปที่ตีกรอบแล้ว -->
         <div class="card r-photo">
             <h3 class="card-title">กรอบสแกน</h3>
+            {# มือถือ : รูปขึ้นก่อนป้าย เลยมีตราเล็กบอกผลไว้เหนือรูป (โปรแกรมอ่านหน้าจออ่านจากป้ายแทน) #}
+            <div class="mini-verdict" aria-hidden="true">{{ verdict(summary) }}</div>
             {% if summary.total > 0 %}
             {# อธิบายสีกรอบเฉพาะแบบที่มีในรูปนี้ #}
             {% set legend = [] %}
@@ -216,12 +243,11 @@
             <div class="card-sub">{% for l in legend %}<span class="nowrap">{{ l }}</span>{% if not loop.last %} · {% endif %}{% endfor %}</div>
             {% else %}<div class="card-sub">รูปที่ใส่เข้ามา</div>{% endif %}
             {# หน้าผลไม่มีมุมกรอบสแกน (มุมจะทับเลขของลูกที่อยู่ริมรูป) #}
-            {% if summary.total > 0 %}<div class="card-sub photo-hint">แตะเลขในป้ายหรือในรายการ เพื่อดูลูกนั้นในรูป</div>{% endif %}
             <div class="frame has-img has-result">
                 {# ช่องไฮไลต์ของแต่ละลูก (ซ่อนไว้ scan.js โชว์ตอนแตะเลข) ตำแหน่งเป็น % ของรูป #}
                 <div class="photo-wrap">
                     <img class="frame-photo" src="{{ photo }}" alt="รูปผลไม้ที่ใส่เข้ามา พร้อมกรอบและเลขที่ AI ตีไว้">
-                    {% for f in spots %}<span class="spot" data-num="{{ f.num }}" style="left: {{ f.left }}%; top: {{ f.top }}%; width: {{ f.width }}%; height: {{ f.height }}%;"></span>{% endfor %}
+                    {% for f in spots %}<span class="spot" data-num="{{ f.num }}" data-say="{{ f.say }}" style="left: {{ f.left }}%; top: {{ f.top }}%; width: {{ f.width }}%; height: {{ f.height }}%;"></span>{% endfor %}
                 </div>
             </div>
             {# ผลไม้เยอะ เลขเล็ก : เปิดรูปเต็มในแท็บใหม่ ซูมดูได้ (scan.js โชว์ปุ่มให้) #}
@@ -241,6 +267,8 @@
                         <li><b>ให้ตรวจซ้ำ</b> AI ว่าสด แต่มั่นใจ {{ min_conf }}–{{ high_conf - 1 }}% ตรวจซ้ำก่อนส่ง</li>
                         <li><b>คัดออก</b> AI ว่าเน่า มั่นใจตั้งแต่ {{ min_conf }}% (คัดออกไว้ก่อน ดีกว่าปล่อยลูกเน่าหลุด)</li>
                     </ul>
+                </li>
+                <li><b>ตรวจรอบสอง</b> ถ้าใส่จำนวนลูกไว้แล้ว AI ตีกรอบไม่ครบ AI จะดูรูปเดิมอีกรอบ ยอมรับกรอบที่มั่นใจตั้งแต่ {{ again_conf }}% เติมไม่เกินจำนวนที่ขาด ลูกที่เจอรอบนี้ ว่าสด = ให้ตรวจซ้ำ ว่าเน่า = คัดออก
                 </li>
                 <li><b>ข้อจำกัด</b> AI เห็นแค่รูป ไม่ได้ดมกลิ่นหรือกดดูความนิ่ม ผลไม้นอก 5 ชนิด รูปเบลอ หรือแสงน้อย อาจทายผิดได้</li>
             </ul>
@@ -271,31 +299,14 @@
             <div class="result-wrap"><div class="result-tag">
                 <div class="tag-card">
                     <div class="tag-hole"></div>
-                    {% if summary.total == 0 %}
-                    <div class="stamp stamp-none">ไม่เจอผลไม้</div>
-                    {% elif summary.missing > 0 %}
-                    {# จำนวนกรอบไม่ตรงกับที่นับ : เรื่องนี้สำคัญกว่า เพราะลูกที่ไม่มีกรอบอาจเน่า #}
-                    <div class="stamp stamp-warn">ตรวจไม่ครบ {{ summary.missing }} ลูก</div>
-                    {% elif summary.extra > 0 %}
-                    <div class="stamp stamp-warn">กรอบเกิน {{ summary.extra }} กรอบ</div>
-                    {% elif summary.bad > 0 %}
-                    {# % เน่าของลูกที่ตีกรอบได้ทั้งหมด (ไว้เทียบแต่ละล็อต) #}
-                    <div class="stamp stamp-rotten">คัดออก {{ summary.bad }} ลูก ({{ summary.bad_percent }}%)</div>
-                    {% elif summary.check > 0 %}
-                    <div class="stamp stamp-check">ให้ตรวจซ้ำ {{ summary.check }} ลูก</div>
-                    {% else %}
-                    {# นับไว้แล้วตรงกับจำนวนกรอบ = "สด 8/8 ลูก" / ไม่ได้นับ = "สด 8 ลูก" (ลูกนอกกรอบ AI ไม่ได้ตรวจ) #}
-                    {% if summary.expected and summary.expected == summary.total %}
-                    <div class="stamp">สด {{ summary.good }}/{{ summary.expected }} ลูก</div>
-                    {% else %}
-                    <div class="stamp">สด {{ summary.good }} ลูก</div>
-                    {% endif %}
-                    {% endif %}
+                    {{ verdict(summary) }}
                     <div class="tag-title">ป้ายตรวจคุณภาพ</div>
                     {# นับได้แค่ลูกที่มีกรอบ เลยเขียนว่า "ตีกรอบได้" ไม่ใช่ "เจอ" #}
                     {# กรอกจำนวนลูกไว้ : บอกเป็น "ได้ 1 จาก 5 ลูก" #}
-                    <div class="tag-row"><span class="tag-key">AI ตีกรอบได้</span><span class="tag-line">{% if summary.extra > 0 %}{{ summary.total }} กรอบ (นับได้ {{ summary.expected }} ลูก){% else %}{{ summary.total }}{% if summary.expected %} จาก {{ summary.expected }}{% endif %} ลูก{% endif %}</span></div>
+                    <div class="tag-row"><span class="tag-key">AI ตีกรอบได้</span><span class="tag-line">{% if summary.extra > 0 %}{{ summary.total }} กรอบ (นับได้ {{ summary.expected }} ลูก){% else %}{{ summary.total }}{% if summary.expected %} จาก {{ summary.expected }}{% endif %} ลูก{% endif %}{% if summary.again > 0 %} <span class="nowrap tag-again">(ตรวจรอบสองเจอเพิ่ม {{ summary.again }})</span>{% endif %}</span></div>
                     {% if summary.total > 0 %}
+                    {# ชนิดที่ AI ทาย (ทายชนิดผิด คนจะเห็นตรงนี้) #}
+                    <div class="tag-row"><span class="tag-key">ชนิด</span><span class="tag-line">{% for k in summary.kinds %}<span class="nowrap">{{ k[0] }} {{ k[1] }}</span>{% if not loop.last %} · {% endif %}{% endfor %}</span></div>
                     {# เลขลูกเขียนแบบเดียวกับเลขบนกรอบในรูป #}
                     <div class="tag-row"><span class="tag-key">คัดออก</span>{% if summary.bad_nums %}{{ tag_nums(summary.bad_nums, "tag-bad") }}{% else %}<span class="tag-line">ไม่มี</span>{% endif %}</div>
                     <div class="tag-row"><span class="tag-key">ให้ตรวจซ้ำ</span>{% if summary.check_nums %}{{ tag_nums(summary.check_nums, "tag-check") }}{% else %}<span class="tag-line">ไม่มี</span>{% endif %}</div>
@@ -325,17 +336,17 @@
             <div class="tag-warn">ลองแยกกองให้ผลไม้ไม่ซ้อนกัน ถ่ายใกล้ขึ้น แล้วสแกนใหม่</div>
             {% elif not summary.expected %}
             {# ไม่ได้กรอกจำนวน : เตือนสั้นๆ (เรื่องผลไม้ซ้อน เตือนเฉพาะตอนหลายลูก) #}
-            <div class="tag-warn">ลูกที่ไม่มีกรอบ AI ไม่ได้ตรวจ{% if summary.total >= 6 %} ผลไม้เยอะหรือซ้อนกัน AI อาจตีกรอบไม่ครบ{% endif %} · ใส่จำนวนลูกตอนสแกน เว็บจะเช็กให้ว่าครบไหม</div>
+            <div class="tag-warn">ลูกที่ไม่มีกรอบ AI ไม่ได้ตรวจ{% if summary.total >= 6 %} · ผลไม้เยอะหรือซ้อนกัน AI อาจตีกรอบไม่ครบ{% endif %}</div>
             {% endif %}
             {# โปรแกรมอ่านหน้าจอจะอ่านสรุปนี้ก่อนรายการ #}
-            <div class="sr-only" id="summary-text">ผลตรวจ: AI ตีกรอบได้ {{ summary.total }}{% if summary.expected %} จาก {{ summary.expected }}{% endif %} ลูก{% if summary.missing > 0 %} ตรวจไม่ครบ {{ summary.missing }} ลูก{% endif %}{% if summary.extra > 0 %} กรอบเกิน {{ summary.extra }} กรอบ{% endif %} คัดออก {{ summary.bad }} ลูก ให้ตรวจซ้ำ {{ summary.check }} ลูก สด {{ summary.good }} ลูก ลูกที่ไม่มีกรอบ AI ไม่ได้ตรวจ</div>
+            <div class="sr-only" id="summary-text">ผลตรวจ: AI ตีกรอบได้ {{ summary.total }}{% if summary.expected %} จาก {{ summary.expected }}{% endif %} ลูก{% for k in summary.kinds %} {{ k[0] }} {{ k[1] }}{% endfor %}{% if summary.missing > 0 %} ตรวจไม่ครบ {{ summary.missing }} ลูก{% endif %}{% if summary.extra > 0 %} กรอบเกิน {{ summary.extra }} กรอบ{% endif %} คัดออก {{ summary.bad }} ลูก ให้ตรวจซ้ำ {{ summary.check }} ลูก สด {{ summary.good }} ลูก{% if not summary.expected %} ยังไม่ได้นับทั้งถาด ลูกที่ไม่มีกรอบ AI ไม่ได้ตรวจ{% endif %}</div>
         </div>
 
         {% if summary.total > 0 %}
         <!-- รายการทีละลูก (เลขตรงกับกรอบในรูป) -->
         <div class="card r-list" id="fruit-list">
             <h3 class="card-title">ทีละลูก</h3>
-            <div class="card-sub">เลขตรงกับเลขบนกรอบในรูป · ลูกที่ต้องคัดออกอยู่บนสุด</div>
+            <div class="card-sub">แตะเลขเพื่อดูลูกนั้นในรูป · ลูกที่ต้องคัดออกอยู่บนสุด</div>
             {# เหตุผลของลูกที่ให้ตรวจซ้ำ บอกครั้งเดียวตรงนี้ ไม่ซ้ำทุกแถว #}
             {% if fruits|selectattr("notes")|list|length > 0 %}<div class="card-sub">ตัวเทาใต้ชื่อ = สิ่งที่อาจทำให้ AI มั่นใจน้อยลง</div>{% endif %}
             {% if summary.check > 0 %}<div class="list-note"><b>ให้ตรวจซ้ำ</b> = AI ว่าสด แต่มั่นใจไม่ถึง {{ high_conf }}% หยิบดูอีกรอบก่อนส่ง ถ้าเน่าจริงจะได้ไม่หลุดถึงลูกค้า</div>{% endif %}
@@ -369,6 +380,8 @@
 
 </div>
 {# มือถือ : ปุ่มติดล่างจอ กดแล้วเลือก/ถ่ายรูปถาดต่อไปเลย (ปิด JS = เลื่อนไปฟอร์มสแกนต่อ) #}
+{# แตะเลขแล้วหน้าเลื่อนไปที่รูป : ปุ่มนี้พากลับไปที่เลขเดิม (scan.js โชว์ให้) #}
+<button class="back-chip" type="button" hidden></button>
 <a class="next-bar" href="#next">{{ icons.camera|safe }} สแกนถาดต่อไป</a>
 
 {% else %}

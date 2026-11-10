@@ -159,6 +159,9 @@ h1, h2, h3 {font-family: 'Mitr', sans-serif;}
 .step-check .tick-box {background: var(--amber); border-color: var(--amber);}
 .step-check .step-num, .step-check .mark {color: var(--amber);}
 .step-miss .step-num, .step-miss .mark, .step-extra .step-num, .step-extra .mark {color: var(--rotten);}
+/* ไม่รู้ว่าครบไหม (ไม่ได้กรอกจำนวน) : ช่องเส้นประสีหมึก ไม่ติ๊ก */
+.step-unknown .tick-box {border-style: dashed;}
+.step-unknown .step-num, .step-unknown .mark {color: var(--ink);}
 /* ยังไม่เริ่ม : ช่องเป็นวงเส้นประจางๆ จะได้ไม่ดูเหมือนช่องให้กดติ๊ก */
 .step:not([class*="step-"]) .tick-box {border-style: dashed; border-color: var(--muted); border-radius: 50%;}
 /* มีผลแล้ว : ซ่อนคำอธิบายย่อย แถบขั้นตอนเหลือบรรทัดเดียว */
@@ -388,12 +391,15 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 }
 /* ตราปั๊ม "เน่า" ใช้สีอิฐ */
 .stamp-rotten {color: var(--rotten); border-color: var(--rotten);}
-/* ตราปั๊ม "ตรวจไม่ครบ" / "กรอบเกิน" : เหลืองอำพัน เส้นประ */
-.stamp-warn {color: var(--rotten); border: 4px double var(--rotten);}   /* เส้นคู่ ต่างจากตรา "ให้ตรวจซ้ำ" ที่เป็นเส้นประ */
+/* ตราปั๊ม "ตรวจไม่ครบ" / "กรอบเกิน" : สีอิฐ เส้นคู่ (ต่างจากตรา "คัดออก" ที่เส้นเดียว) */
+.stamp-warn {color: var(--rotten); border: 4px double var(--rotten);}
 /* ตราปั๊ม "ให้ตรวจซ้ำ" : เหลืองอำพัน เส้นประ */
 .stamp-check {color: var(--amber); border-color: var(--amber); border-style: dashed;}
 /* ตราปั๊ม "ไม่เจอผลไม้" : หมึกดำ เส้นคู่ (ไม่ให้หน้าตาเหมือนตราอื่น) */
 .stamp-none {color: var(--ink); border: 4px double var(--ink);}
+/* ตราปั๊ม "สด แต่ยังไม่ได้นับ" : หมึกดำ เส้นประ (ไม่รู้ว่ามีลูกนอกกรอบไหม เลยไม่ใช้เขียว) */
+.stamp-unsure {color: var(--ink); border-color: var(--ink); border-style: dashed; text-align: center;}
+.stamp small {display: block; margin-top: 6px; font-size: 15px; font-weight: 500; line-height: 1.5; padding-bottom: 2px;}
 /* ป้ายผลตรวจ : ป้ายคือตัวผลเอง ไม่ต้องมีการ์ดครอบอีกชั้น */
 .r-tag {margin-bottom: 28px;}
 .r-tag .card-sub {margin-bottom: 6px;}
@@ -412,6 +418,7 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 .tag-warn {margin-top: 10px; color: var(--muted); font-size: 15px;}
 .tag-bad {color: var(--rotten); font-weight: 600;}   /* เลขลูกที่ต้องคัดออก */
 .tag-check {color: var(--amber); font-weight: 600;}
+.tag-again {font-size: 16px; color: var(--amber);}   /* ตรวจรอบสองเจอเพิ่ม */
 
 
 /* ===== ข้อมูลรูปหลังปรับ ===== */
@@ -450,7 +457,11 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 /* ===== จอเล็ก (มือถือ) ===== */
 /* แท็บเล็ตและมือถือ : หน้าผลเรียงเป็นคอลัมน์เดียว (2 คอลัมน์แคบเกิน ข้อความในรายการตัดคำ)
    รูป -> ป้ายตรวจ -> รายการ -> สแกนต่อ -> AI ตัดสินจากอะไร -> ข้อมูลทางเทคนิค */
+.mini-verdict {display: none;}
 @media (max-width: 960px) {
+    .mini-verdict {display: block; margin: 4px 0 10px;}
+    .mini-verdict .stamp {display: inline-block; margin: 0; transform: none; font-size: 18px; line-height: 1.6; padding: 2px 12px 0;}
+    .mini-verdict .stamp small {display: inline; margin: 0; font-size: 14px; padding: 0 0 0 6px;}
     .result-layout {display: flex; flex-direction: column; gap: 0; align-items: stretch;}
     .result-col {display: contents;}
     .r-photo {order: 1;}
@@ -569,9 +580,13 @@ details.card > summary:focus-visible {outline: 2px solid var(--olive); outline-o
 /* ช่องไฮไลต์ : ปกติซ่อน / แตะเลขแล้วโชว์กรอบหนา และทำให้ส่วนอื่นของรูปมืดลง */
 .spot {position: absolute; border: 4px solid var(--paper); outline: 3px solid var(--ink); box-shadow: 0 0 0 9999px rgba(23, 23, 23, 0.45); opacity: 0; pointer-events: none; transition: opacity 0.2s ease-out;}
 .spot.on {opacity: 1;}
-.photo-hint {margin-top: -8px;}
+
 /* เลขในป้ายเป็นปุ่ม (หน้าตาเหมือนตัวหนังสือ ขีดเส้นใต้จุดๆ บอกว่าแตะได้) */
-.num-link {background: none; border: none; padding: 0 2px; font: inherit; color: inherit; text-decoration: underline dotted; text-underline-offset: 4px; cursor: pointer;}
+.num-link {position: relative; background: none; border: none; padding: 0 2px; font: inherit; color: inherit; text-decoration: underline dotted; text-underline-offset: 4px; cursor: pointer;}
+/* พื้นที่กดใหญ่กว่าตัวเลข (ราว 44px) แต่ไม่ดันบรรทัดให้สูงขึ้น */
+.num-link::after {content: ""; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%);}
+button.fruit-num {position: relative;}
+button.fruit-num::after {content: ""; position: absolute; inset: -6px;}
 .num-link:focus-visible, button.fruit-num:focus-visible {outline: 2px solid var(--olive); outline-offset: 2px; border-radius: 4px;}
 button.fruit-num {border: none; padding: 0; font: inherit; font-weight: 600; cursor: pointer;}
 a.tag-hint {color: var(--muted); text-decoration: underline; text-underline-offset: 3px;}
@@ -585,6 +600,13 @@ a.tag-hint {color: var(--muted); text-decoration: underline; text-underline-offs
     .next-bar.away {transform: translateY(160%);}
     /* เว้นที่ด้านล่าง ปุ่มจะได้ไม่บังเนื้อหาสุดท้าย */
     body:has(.next-bar) .page {padding-bottom: 80px;}
+}
+/* ปุ่มกลับไปที่เลขเดิม : ลอยกลางล่างจอ (มือถืออยู่เหนือปุ่มสแกนถาดต่อไป) */
+.back-chip {position: fixed; left: 50%; bottom: 20px; z-index: 21; transform: translateX(-50%); min-height: 44px; padding: 0 18px; border: 1.5px solid var(--ink); border-radius: 22px; background: var(--paper); font-family: inherit; font-size: 15px; font-weight: 600; color: var(--ink); box-shadow: rgba(0, 0, 0, 0.2) 0 4px 12px; cursor: pointer; white-space: nowrap;}
+.back-chip[hidden] {display: none;}
+.back-chip:focus-visible {outline: 2px solid var(--olive); outline-offset: 2px;}
+@media (max-width: 700px) {
+    .back-chip {bottom: 76px;}
 }
 @media (prefers-reduced-motion: reduce) {
     .spot, .next-bar {transition: none;}

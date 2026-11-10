@@ -347,33 +347,74 @@ if (zoomBtn && resultPhoto) {
 
 
 // ----- 4.6) แตะเลข (ในป้าย / ในรายการ) แล้วเห็นลูกนั้นในรูป -----
+// ไฮไลต์ค้างไว้จนแตะเลขอื่น (แตะเลขเดิมซ้ำ = ปิด) และมีปุ่มพากลับไปที่เลขเดิม
 var calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-var spotTimer = null;
-function showSpot(num) {
-    var spot = document.querySelector('.spot[data-num="' + num + '"]');
-    if (!spot) {
-        return;
-    }
+var backChip = document.querySelector(".back-chip");
+var lastButton = null;   // ปุ่มเลขที่แตะล่าสุด ไว้พากลับ
+var chipTime = 0;        // เวลาที่โชว์ปุ่มกลับ
+
+function hideSpots() {
     var all = document.querySelectorAll(".spot");
     for (var i = 0; i < all.length; i++) {
         all[i].classList.remove("on");
     }
+}
+
+function showSpot(btn) {
+    var num = btn.getAttribute("data-num");
+    var spot = document.querySelector('.spot[data-num="' + num + '"]');
+    if (!spot) {
+        return;
+    }
+    // แตะเลขเดิมซ้ำตอนไฮไลต์อยู่ = ปิดไฮไลต์
+    if (spot.classList.contains("on") && lastButton === btn) {
+        hideSpots();
+        backChip.hidden = true;
+        return;
+    }
+    hideSpots();
     spot.classList.add("on");
+    lastButton = btn;
     // เลื่อนให้เห็นรูป (ตั้งลดการเคลื่อนไหว = กระโดดไปเลย)
     document.querySelector(".has-result").scrollIntoView({ block: "center", behavior: calm ? "auto" : "smooth" });
-    live.textContent = "ลูกเลข " + num + " คือกรอบที่ไฮไลต์อยู่ในรูป";
-    clearTimeout(spotTimer);
-    spotTimer = setTimeout(function () {
-        spot.classList.remove("on");
-    }, 3000);
+    // อ่านผลของลูกนั้นให้คนที่มองไม่เห็นรูป
+    live.textContent = spot.getAttribute("data-say") + " ไฮไลต์ในรูปแล้ว";
+    backChip.textContent = "กลับไปที่เลข " + num;
+    backChip.hidden = false;
+    chipTime = Date.now();
 }
+
+// เลื่อนกลับมาเห็นเลขเดิมเองแล้ว : ซ่อนปุ่มกลับ (รอให้หน้าเลื่อนไปที่รูปเสร็จก่อน)
+function checkChip() {
+    if (backChip.hidden || !lastButton || Date.now() - chipTime < 900) {
+        return;
+    }
+    var box = lastButton.getBoundingClientRect();
+    if (box.top > 0 && box.bottom < window.innerHeight) {
+        backChip.hidden = true;
+    }
+}
+if (backChip) {
+    window.addEventListener("scroll", checkChip, { passive: true });
+}
+
 var numButtons = document.querySelectorAll(".num-link, button.fruit-num");
 for (var n = 0; n < numButtons.length; n++) {
     numButtons[n].addEventListener("click", function () {
-        showSpot(this.getAttribute("data-num"));
+        showSpot(this);
     });
 }
 
+// กลับไปที่เลขเดิม แล้วโฟกัสปุ่มนั้น (กด Tab ต่อได้เลย)
+if (backChip) {
+    backChip.addEventListener("click", function () {
+        backChip.hidden = true;
+        if (lastButton) {
+            lastButton.scrollIntoView({ block: "center", behavior: calm ? "auto" : "smooth" });
+            lastButton.focus({ preventScroll: true });
+        }
+    });
+}
 
 // ----- 4.7) ปุ่ม "สแกนถาดต่อไป" ติดล่างจอ (มือถือ) -----
 // กดแล้วเลื่อนไปฟอร์มสแกนต่อ และเปิดหน้าต่างเลือก/ถ่ายรูปเลย

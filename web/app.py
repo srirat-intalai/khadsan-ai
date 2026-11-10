@@ -22,6 +22,7 @@ HIGH_CONF = 70          # ว่าสดต้องมั่นใจตั้
 MAX_FRUITS = 30         # โชว์รายการไม่เกินกี่ลูก
 MAX_COUNT = 300         # ช่อง "ในถาดมีกี่ลูก" รับได้ไม่เกินนี้
 SAME_FRUIT = 0.5        # กรอบทับกันเกินครึ่ง = ลูกเดียวกัน
+AGAIN_CONF = 0.25       # ตรวจรอบสอง (กรอกจำนวนแล้วยังขาด) ยอมรับกรอบที่มั่นใจต่ำลงมาถึงนี้
 
 # ชื่อไทยของผลไม้ 5 ชนิด
 THAI_NAMES = {
@@ -122,9 +123,9 @@ def load_model():
 
 
 # หาผลไม้ในรูป เรียงบนลงล่าง ซ้ายไปขวา
-def detect(img):
+def detect(img, min_conf=CONF_MIN):
     # agnostic_nms : ลูกเดียวโดนตีกรอบ 2 ชนิด ให้เหลือกรอบเดียว
-    result = load_model().predict(img, imgsz=IMG_SIZE, conf=CONF_MIN, iou=SAME_FRUIT,
+    result = load_model().predict(img, imgsz=IMG_SIZE, conf=min_conf, iou=SAME_FRUIT,
                                   agnostic_nms=True, max_det=100, verbose=False)[0]
     fruits = []
     for i in range(len(result.boxes)):
@@ -136,13 +137,13 @@ def detect(img):
         box = [float(xyxy[0]), float(xyxy[1]), float(xyxy[2]), float(xyxy[3])]
         # 3 ผล : good = สด / check = ให้ตรวจซ้ำ / bad = คัดออก
         if quality == "Bad":
-            state = "bad"      # ว่าเน่า (มั่นใจตั้งแต่ 40% = CONF_MIN) คัดออกเลย กันพลาดไว้ก่อน
+            state = "bad"      # ว่าเน่า คัดออกเลย กันพลาดไว้ก่อน
         elif conf < HIGH_CONF:
             state = "check"    # ว่าสดแต่มั่นใจไม่ถึง HIGH_CONF ถ้าจริงๆ เน่าจะหลุดถึงลูกค้า
         else:
             state = "good"
         fruits.append({"fruit": fruit, "thai": THAI_NAMES.get(fruit, fruit), "quality": quality,
-                       "conf": round(conf), "box": box, "state": state})   # % ปัดเป็นเลขกลม
+                       "conf": round(conf), "box": box, "state": state, "again": False})   # % ปัดเป็นเลขกลม
     return number_fruits(fruits)
 
 
@@ -191,6 +192,35 @@ def box_color(f):
     if f["state"] == "bad":
         return COLOR_BAD
     return COLOR_GOOD          # สด / ให้ตรวจซ้ำ = เขียว (ให้ตรวจซ้ำใช้เส้นประ)
+
+
+# ตรวจรอบสอง : คนกรอกจำนวนลูกไว้ แต่ AI ตีกรอบได้ไม่ครบ
+# ให้ AI ดูรูปเดิมอีกรอบโดยยอมรับกรอบที่มั่นใจต่ำลง (AGAIN_CONF) แล้วเติมเฉพาะลูกที่ยังไม่มีกรอบ
+# เติมไม่เกินจำนวนที่ขาด (กันตีกรอบมั่ว) ลูกที่เจอรอบสองใช้กฎเดิม : ว่าเน่า = คัดออก / ว่าสด = ให้ตรวจซ้ำ (มั่นใจต่ำ)
+def find_more(img, fruits, missing):
+    more = detect(img, AGAIN_CONF)
+    more.sort(key=conf_of, reverse=True)   # มั่นใจมากก่อน
+    added = 0
+    for f in more:
+        if added >= missing:
+            break
+        # ทับกรอบเดิมเกินครึ่ง = ลูกเดิม ข้าม
+        same = False
+        for old in fruits:
+            if overlap(f, old) > min(box_area(f), box_area(old)) * SAME_FRUIT:
+                same = True
+                break
+        if same:
+            continue
+        f["again"] = True
+        fruits.append(f)
+        added = added + 1
+    return number_fruits(fruits), added
+
+
+# ใช้ตอนเรียงกรอบ : % ความมั่นใจ
+def conf_of(f):
+    return f["conf"]
 
 
 # วาดกรอบ + เลขลงบนรูป (เลขตรงกับรายการในหน้าเว็บ)
@@ -291,6 +321,8 @@ def add_details(img, fruits):
 
         # สิ่งที่อาจทำให้ AI มั่นใจน้อยลง
         notes = []
+        if f["again"]:
+            notes.append("เจอตอนตรวจรอบสอง ดูให้แน่ว่าเป็นผลไม้จริง")
         if f["conf"] < HIGH_CONF:
             if box_area(f) < width * height * 0.015:
                 notes.append("ลูกนี้เล็กในรูป เห็นรายละเอียดผิวน้อย")
@@ -309,17 +341,26 @@ def add_details(img, fruits):
 def count_states(fruits):
     summary = {"total": len(fruits), "good": 0, "check": 0, "bad": 0,
                "bad_nums": [], "check_nums": []}
+    kinds = {}   # ชนิดละกี่ลูก เช่น {"แอปเปิล": 8}
     for f in fruits:
         summary[f["state"]] = summary[f["state"]] + 1
+        kinds[f["thai"]] = kinds.get(f["thai"], 0) + 1
         if f["state"] == "bad":
             summary["bad_nums"].append(str(f["num"]))
         if f["state"] == "check":
             summary["check_nums"].append(str(f["num"]))
+    # ชนิดที่เจอเยอะสุดขึ้นก่อน เช่น [("แอปเปิล", 8), ("ส้ม", 2)]
+    summary["kinds"] = sorted(kinds.items(), key=kind_count, reverse=True)
     # เน่ากี่ % ของทั้งถาด
     summary["bad_percent"] = 0
     if summary["total"] > 0:
         summary["bad_percent"] = round(summary["bad"] * 100 / summary["total"])
     return summary
+
+
+# ใช้ตอนเรียงชนิด : จำนวนลูกของชนิดนั้น
+def kind_count(item):
+    return item[1]
 
 
 # จำนวนลูกที่คนกรอกเอง (ไม่บังคับ) : เทียบกับจำนวนกรอบ บอกว่าตรวจครบไหม
@@ -383,14 +424,19 @@ def scan():
     # ให้โมเดลตรวจ (พังก็ไม่โชว์ error ดิบ) ถ้าโมเดลกำลังตรวจงานอื่นอยู่ รอจนเสร็จ
     try:
         count = read_count(request.form.get("count"))
+        again = 0
         with model_lock:
             fruits = detect(img)
+            # กรอกจำนวนไว้แต่ยังขาด : ตรวจรอบสองหาลูกที่หลุด
+            if count is not None and len(fruits) < count:
+                fruits, again = find_more(img, fruits, count - len(fruits))
     except Exception:
         return render_template("index.html", photo=to_base64(img), error="ตอนนี้ AI ตรวจไม่ได้ ลองใหม่อีกครั้งนะ")
 
     add_details(img, fruits)
     summary = count_states(fruits)
     compare_count(summary, count)
+    summary["again"] = again   # รอบสองเจอเพิ่มกี่ลูก
     photo = to_base64(draw_boxes(img, fruits), max_size=1200)
     rgb, small_size = color_mean(img)
 
@@ -401,6 +447,9 @@ def scan():
         f["top"] = round(f["box"][1] / height * 100, 2)
         f["width"] = round((f["box"][2] - f["box"][0]) / width * 100, 2)
         f["height"] = round((f["box"][3] - f["box"][1]) / height * 100, 2)
+        # ข้อความให้โปรแกรมอ่านหน้าจอ อ่านตอนแตะเลข
+        words = {"good": "สด", "check": "ให้ตรวจซ้ำ", "bad": "เน่า คัดออก"}
+        f["say"] = "ลูกเลข " + str(f["num"]) + " " + f["thai"] + " " + words[f["state"]] + " ความมั่นใจ " + str(f["conf"]) + "%"
 
     # ลูกเน่าขึ้นก่อน
     fruits.sort(key=list_order)
@@ -410,7 +459,7 @@ def scan():
     return render_template("index.html",
         photo=photo, fruits=fruits[:MAX_FRUITS], spots=fruits, more=more, summary=summary,
         rgb=rgb, small_size=small_size, original_size=img.size,
-        min_conf=round(CONF_MIN * 100), high_conf=HIGH_CONF)
+        min_conf=round(CONF_MIN * 100), again_conf=round(AGAIN_CONF * 100), high_conf=HIGH_CONF)
 
 
 # ===== สแกนสด =====
