@@ -1,0 +1,74 @@
+{# หน้าประวัติการตรวจ : ยอดรวมวันนี้ + 20 ครั้งล่าสุดจาก RDS รูปเปิดจาก S3 ผ่านลิงก์ชั่วคราว (presigned URL) #}
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ประวัติการตรวจ · KhadSan AI</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍎</text></svg>">
+<link rel="stylesheet" href="{{ url_for('static', filename='fonts/fonts.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="page">
+
+<header class="nav"><a class="brand" href="{{ url_for('home') }}" style="text-decoration: none;">{{ icons.leaf|safe }}KhadSan AI</a><a class="nav-link" href="{{ url_for('home') }}#scan">สแกนผลไม้</a></header>
+<main>
+
+<h2 class="section-title">ประวัติการตรวจ</h2>
+<div class="section-sub"><span class="caption">ทุกครั้งที่กดตรวจ (สแกนสดไม่บันทึก)</span></div>
+
+{% if not data.enabled %}
+<div class="card"><div class="error-box">ยังไม่ได้ต่อฐานข้อมูล ตั้ง DB_HOST และ DB_PASSWORD ก่อน (ดู web/cloud.py)</div></div>
+{% elif data.error %}
+<div class="card"><div class="error-box" role="alert">ตอนนี้อ่านประวัติจากฐานข้อมูลไม่ได้ ลองใหม่อีกครั้งนะ</div></div>
+{% else %}
+
+{% set t = data.today %}
+<div class="card">
+    <h3 class="card-title">วันนี้ ({{ t.date }})</h3>
+    <div class="card-sub">นับจากทุกรูปที่ตรวจวันนี้ · อีเมลสรุปของวันส่งทุกวัน 18:00 น.</div>
+    <div class="hist-today">
+        <div class="hist-stat"><b>{{ t.scans }}</b><span>ครั้งที่ตรวจ</span></div>
+        <div class="hist-stat"><b>{{ t.total }}</b><span>ผลไม้ทั้งหมด (ลูก)</span></div>
+        <div class="hist-stat"><b>{{ t.fresh }}</b><span>สด</span></div>
+        <div class="hist-stat"><b>{{ t.recheck }}</b><span>ให้ตรวจซ้ำ</span></div>
+        <div class="hist-stat is-bad"><b>{{ t.rotten }}</b><span>คัดออก{% if t.total %} ({{ (t.rotten * 100 / t.total)|round|int }}%){% endif %}</span></div>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 24px;">
+    <h3 class="card-title">{{ data.scans|length }} ครั้งล่าสุด</h3>
+    <div class="card-sub">เวลาไทย · แตะรูปเพื่อดูขนาดเต็ม (ลิงก์รูปใช้ได้ 1 ชั่วโมง)</div>
+    {% if data.scans %}
+    <ol class="hist-list">
+        {% for s in data.scans %}
+        <li class="hist-item">
+            {% if s.image_url %}
+            <a href="{{ s.image_url }}" target="_blank" rel="noopener"><img class="hist-thumb" src="{{ s.image_url }}" alt="รูปที่ตรวจเมื่อ {{ s.time }}" loading="lazy"></a>
+            {% else %}
+            <div class="hist-thumb hist-nothumb">ไม่มีรูป</div>
+            {% endif %}
+            <div>
+                <div class="hist-time">{{ s.time }}</div>
+                <div class="hist-nums">{{ s.total }} ลูก · สด {{ s.fresh }} · <span class="{% if s.recheck %}hist-check{% endif %}">ให้ตรวจซ้ำ {{ s.recheck }}</span> · <span class="{% if s.rotten %}hist-bad{% endif %}">คัดออก {{ s.rotten }} ({{ s.percent }}%)</span></div>
+                {% if s.rotten >= data.alert_rotten %}<div class="card-sub" style="margin: 0;">ถึงเกณฑ์เตือนทางอีเมล (คัดออกตั้งแต่ {{ data.alert_rotten }} ลูก)</div>{% endif %}
+            </div>
+        </li>
+        {% endfor %}
+    </ol>
+    {% else %}
+    <p class="hist-empty">ยังไม่มีประวัติ ลอง<a href="{{ url_for('home') }}#scan">สแกนผลไม้</a>สักรูปก่อนนะ</p>
+    {% endif %}
+</div>
+{% endif %}
+
+</main>
+<footer class="footer">
+    <div class="footer-brand">KhadSan AI</div>
+    <span class="caption">คัดของสด ก่อนของเน่าหลุดถึงมือลูกค้า</span>
+    <div class="footer-small">ประวัติเก็บใน Amazon RDS · รูปเก็บใน Amazon S3 แบบส่วนตัว</div>
+</footer>
+</div>
+</body>
+</html>

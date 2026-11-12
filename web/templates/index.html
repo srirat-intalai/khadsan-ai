@@ -140,6 +140,8 @@
         <div class="cam-note">สแกนสด = เล็งกล้องค้างไว้ กรอบจะขึ้นตามผลไม้ (กรอบเขียวเส้นประ = ให้ตรวจซ้ำ · กรอบสีอิฐ = คัดออก) · อยากได้รายละเอียดทีละลูก กด "ถ่าย" แล้วตรวจ</div>
     </div>
     <div class="cam-msg" role="alert" hidden></div>
+    {# ต่อ AWS อยู่ : บอกตรงๆ ว่าเก็บรูป (สแกนสดไม่เก็บ) #}
+    {% if storage_on %}<div class="store-note">รูปที่กดตรวจจะถูกเก็บไว้ (รูปที่ตีกรอบแล้ว) ในที่เก็บส่วนตัวบน AWS เพื่อดูย้อนหลัง · สแกนสดไม่เก็บรูป</div>{% endif %}
 
     <label class="drop">
         <span class="drop-label">รูปผลไม้</span>
@@ -166,7 +168,7 @@
 
 
 <!-- ===== แถบบน ===== -->
-<header class="nav"><div class="brand">{{ icons.leaf|safe }}KhadSan AI</div></header>
+<header class="nav"><div class="brand">{{ icons.leaf|safe }}KhadSan AI</div>{% if history_on %}<a class="nav-link" href="{{ url_for('history') }}">ประวัติการตรวจ</a>{% endif %}</header>
 <main>
 
 
@@ -341,6 +343,14 @@
             <div class="tag-warn">ลูกที่ไม่มีกรอบ AI ไม่ได้ตรวจ{% if summary.total >= 6 %} · ผลไม้เยอะหรือซ้อนกัน AI อาจตีกรอบไม่ครบ{% endif %}</div>
             {% endif %}
             {# โปรแกรมอ่านหน้าจอจะอ่านสรุปนี้ก่อนรายการ #}
+            {# บันทึกลง AWS แล้วหรือยัง (ต่อ AWS อยู่เท่านั้น) #}
+            {% if saved %}
+            <div class="save-note{% if saved.error %} save-fail{% endif %}" role="status">
+                {%- if saved.error %}บันทึกผลนี้ไม่ครบ ผลตรวจข้างบนยังใช้ได้ (ดูสาเหตุใน log ของเซิร์ฟเวอร์)
+                {%- else %}บันทึกผลนี้แล้ว{% if history_on %} · <a href="{{ url_for('history') }}">ดูประวัติการตรวจ</a>{% endif %}{% endif -%}
+                {%- if saved.alerted %} · ส่งอีเมลเตือนแล้ว (คัดออก {{ summary.bad }} ลูก){% endif -%}
+            </div>
+            {% endif %}
             <div class="sr-only" id="summary-text">ผลตรวจ: AI ตีกรอบได้ {{ summary.total }}{% if summary.expected %} จาก {{ summary.expected }}{% endif %} ลูก{% for k in summary.kinds %} {{ k[0] }} {{ k[1] }}{% endfor %}{% if summary.missing > 0 %} ตรวจไม่ครบ {{ summary.missing }} ลูก{% endif %}{% if summary.extra > 0 %} กรอบเกิน {{ summary.extra }} กรอบ{% endif %} คัดออก {{ summary.bad }} ลูก ให้ตรวจซ้ำ {{ summary.check }} ลูก สด {{ summary.good }} ลูก{% if not summary.expected %} ยังไม่ได้นับทั้งถาด ลูกที่ไม่มีกรอบ AI ไม่ได้ตรวจ{% endif %}</div>
         </div>
 

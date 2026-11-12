@@ -1,6 +1,7 @@
 # เว็บ KhadSan AI (Flask) : ตีกรอบผลไม้ทุกลูกในรูป แล้วบอกว่าสดหรือเน่า
 # รัน: python app.py แล้วเปิด http://localhost:7860
 # โมเดล: models/best_detect.pt (เทรนด้วยโน้ตบุ๊กใน train/)
+# บน AWS: ตั้ง environment variable ตาม cloud.py แล้วเว็บจะเก็บรูป/ประวัติ และส่งอีเมลเตือนเอง
 
 import os
 import io
@@ -9,6 +10,7 @@ import base64
 import threading
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from PIL import Image, ImageOps, ImageDraw, ImageFont, ImageStat
+import cloud
 
 
 folder = os.path.dirname(os.path.abspath(__file__))
@@ -73,6 +75,9 @@ app.jinja_env.globals["max_mb"] = MAX_MB
 app.jinja_env.globals["max_count"] = MAX_COUNT
 app.jinja_env.globals["img_size"] = IMG_SIZE
 app.jinja_env.globals["model_ready"] = os.path.exists(MODEL_FILE)   # ใส่ไฟล์โมเดลทีหลัง ต้องเปิดเว็บใหม่
+app.jinja_env.globals["cloud_on"] = cloud.ENABLED          # ต่อ AWS อยู่ : โชว์ลิงก์ประวัติ + บอกผู้ใช้ว่าเก็บรูป
+app.jinja_env.globals["storage_on"] = cloud.STORAGE_ON
+app.jinja_env.globals["history_on"] = cloud.DB_ON
 
 
 # ===== จัดการรูป =====
@@ -88,7 +93,7 @@ def fix_image(img):
     return img.convert("RGB")
 
 
-# รูปเป็น base64 ใส่ <img> ได้เลย (ไม่เซฟรูปผู้ใช้)
+# รูปเป็น base64 ใส่ <img> ได้เลย (ไม่เซฟลงเครื่อง ถ้าต่อ AWS รูปตีกรอบจะถูกเก็บใน S3 ผ่าน cloud.py)
 def to_base64(img, max_size=900):
     temp = img.copy()
     temp.thumbnail((max_size, max_size))
@@ -437,7 +442,12 @@ def scan():
     summary = count_states(fruits)
     compare_count(summary, count)
     summary["again"] = again   # รอบสองเจอเพิ่มกี่ลูก
-    photo = to_base64(draw_boxes(img, fruits), max_size=1200)
+    boxed = draw_boxes(img, fruits)
+    photo = to_base64(boxed, max_size=1200)
+    # ต่อ AWS อยู่ : เก็บรูป + log ลง S3 / ประวัติลง RDS / เตือนทาง SNS (ไม่เจอผลไม้ = ไม่บันทึก)
+    saved = None
+    if cloud.ENABLED and summary["total"] > 0:
+        saved = cloud.save_scan(boxed, summary)
     rgb, small_size = color_mean(img)
 
     # ตำแหน่งกรอบเป็น % ของรูป : หน้าเว็บใช้ไฮไลต์ลูกในรูปตอนแตะเลข
@@ -458,12 +468,18 @@ def scan():
         more = 0
     return render_template("index.html",
         photo=photo, fruits=fruits[:MAX_FRUITS], spots=fruits, more=more, summary=summary,
-        rgb=rgb, small_size=small_size, original_size=img.size,
+        rgb=rgb, small_size=small_size, original_size=img.size, saved=saved,
         min_conf=round(CONF_MIN * 100), again_conf=round(AGAIN_CONF * 100), high_conf=HIGH_CONF)
 
 
+# ===== ประวัติการตรวจ (จาก RDS) =====
+@app.route("/history", methods=["GET"])
+def history():
+    return render_template("history.html", data=cloud.history())
+
+
 # ===== สแกนสด =====
-# รับภาพจากกล้องทีละภาพ ตอบเป็นตัวเลข (ตำแหน่งกรอบ + สด/เน่า) ให้หน้าเว็บวาดเอง ไม่เก็บรูป
+# รับภาพจากกล้องทีละภาพ ตอบเป็นตัวเลข (ตำแหน่งกรอบ + สด/เน่า) ให้หน้าเว็บวาดเอง ไม่เก็บรูป ไม่บันทึกประวัติ
 @app.route("/live", methods=["POST"])
 def live():
     file = request.files.get("frame")
@@ -517,13 +533,24 @@ def server_error(e):
     return render_template("index.html", error="เว็บมีปัญหาชั่วคราว ลองใหม่อีกครั้งนะ"), 500
 
 
-if __name__ == "__main__":
-    # โหลดโมเดล + ตรวจรูปว่าง 1 ครั้ง (รอบแรกช้า คนแรกจะได้ไม่ต้องรอ)
+# โหลดโมเดล + ตรวจรูปว่าง 1 ครั้ง (รอบแรกช้า คนแรกจะได้ไม่ต้องรอ)
+def warm_up():
     if os.path.exists(MODEL_FILE):
         try:
-            load_model().predict(Image.new("RGB", (IMG_SIZE, IMG_SIZE), "white"), imgsz=IMG_SIZE, verbose=False)
+            with model_lock:
+                load_model().predict(Image.new("RGB", (IMG_SIZE, IMG_SIZE), "white"), imgsz=IMG_SIZE, verbose=False)
         except Exception:
             pass
+
+
+# รันด้วย gunicorn บน EC2 (WARMUP=1) : อุ่นโมเดลเบื้องหลัง เว็บเปิดได้ระหว่างรอ
+if os.environ.get("WARMUP") == "1":
+    threading.Thread(target=warm_up, daemon=True).start()
+
+
+if __name__ == "__main__":
+    if os.environ.get("WARMUP") != "1":
+        warm_up()
 
     # threaded=True : รับหลายคนพร้อมกัน (โมเดลตรวจทีละงานด้วย model_lock)
     # port 7860 (เปลี่ยนได้ด้วยตัวแปร PORT)
