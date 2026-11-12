@@ -39,7 +39,10 @@ def find_all(s):
         {"Name": "instance-state-name", "Values": ["pending", "running", "stopping", "stopped"]}])["Reservations"]
     instances = [i for r in res for i in r["Instances"]]
     dns = {i.get("PublicDnsName") for i in instances if i.get("PublicDnsName")}
-    dists = cf.list_distributions().get("DistributionList", {}).get("Items", [])
+    dists, denied = list_cloudfront(cf)
+    if denied:
+        print("ข้าม CloudFront : " + denied)
+        dists = []
     mine = [d for d in dists if d.get("Comment") == CF_COMMENT or
             any(o["DomainName"] in dns for o in d["Origins"]["Items"])]
     return instances, mine, find_buckets(s3)

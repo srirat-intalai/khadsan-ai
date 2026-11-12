@@ -65,7 +65,12 @@ def main():
     dns = web_dns(ec2)
     print("EC2 origin : " + dns + ":" + str(PORT))
 
-    dists = cf.list_distributions().get("DistributionList", {}).get("Items", [])
+    dists, denied = list_cloudfront(cf)
+    if denied:
+        print(denied)
+        print("ใช้เว็บผ่าน http://" + dns + ":" + str(PORT) + "/ แทน (ปุ่มกล้องสดต้องใช้ https จะใช้ไม่ได้ ให้ใช้ปุ่มอัปโหลด/ถ่ายรูป)")
+        print("ลองเปิด CloudFront ในหน้า Console ด้วย ถ้าขึ้นว่าไม่มีสิทธิ์เหมือนกัน แปลว่า Lab นี้ใช้ CloudFront ไม่ได้ ให้แจ้งอาจารย์")
+        sys.exit(1)
     mine = [d for d in dists if d.get("Comment") == CF_COMMENT]
     if mine:
         d = mine[0]

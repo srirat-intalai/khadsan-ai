@@ -147,11 +147,15 @@ def main():
                   "รอติดตั้งราว 10 นาที แล้วดู sudo tail -n 40 /var/log/khadsan-setup.log บน EC2")
 
     # CloudFront
-    dists = safe(lambda: cf.list_distributions().get("DistributionList", {}).get("Items", []), [])
-    mine = [d for d in dists if d.get("Comment") == CF_COMMENT or
+    dists, denied = safe(lambda: list_cloudfront(cf), ([], None))
+    if denied:
+        print("ℹ️  CloudFront : " + denied + " (ไม่นับเป็น ❌) เปิดเว็บที่ http://" + str(dns) + ":" + str(PORT) + "/")
+        dists = []
+    mine = [] if denied else [d for d in dists if d.get("Comment") == CF_COMMENT or
             (dns and any(o["DomainName"] == dns for o in d["Origins"]["Items"]))]
-    check("CloudFront distribution (Description = " + CF_COMMENT + " หรือ origin = EC2)", bool(mine),
-          "รัน python3 aws/step5_cloudfront.py")
+    if not denied:
+        check("CloudFront distribution (Description = " + CF_COMMENT + " หรือ origin = EC2)", bool(mine),
+              "รัน python3 aws/step5_cloudfront.py")
     if mine:
         d = mine[0]
         origin = d["Origins"]["Items"][0]

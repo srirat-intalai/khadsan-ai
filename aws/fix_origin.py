@@ -38,7 +38,11 @@ def main():
     except Exception as e:   # noqa: BLE001
         print("ตรวจ RDS ไม่ได้ : " + type(e).__name__)
 
-    dists = cf.list_distributions().get("DistributionList", {}).get("Items", [])
+    dists, denied = list_cloudfront(cf)
+    if denied:
+        print("ข้าม CloudFront : " + denied)
+        print("เปิดเว็บที่ http://" + dns + ":" + str(PORT) + "/ (เครื่องเปิดเว็บเองราว 1-2 นาทีหลังเครื่องขึ้น)")
+        return
     mine = [d for d in dists if d.get("Comment") == CF_COMMENT]
     if not mine:
         sys.exit("ไม่พบ CloudFront ที่ Description = " + CF_COMMENT)

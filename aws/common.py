@@ -86,6 +86,16 @@ def find_topic_arn(sns):
     return None
 
 
+def list_cloudfront(cf):
+    """คืน (รายการ distribution, None) หรือ (None, ข้อความ) ถ้าบัญชีไม่มีสิทธิ์ CloudFront (Learner Lab บางรุ่นปิดไว้)"""
+    try:
+        return cf.list_distributions().get("DistributionList", {}).get("Items", []), None
+    except Exception as e:   # noqa: BLE001
+        if "AccessDenied" in type(e).__name__ or "AccessDenied" in str(e) or "not authorized" in str(e):
+            return None, "บัญชีนี้ไม่มีสิทธิ์ใช้ CloudFront (Learner Lab ปิดไว้)"
+        raise
+
+
 def pick_bucket(s3, env):
     if env.get("S3_BUCKET"):
         return env["S3_BUCKET"]
