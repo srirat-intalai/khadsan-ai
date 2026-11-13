@@ -74,7 +74,7 @@ def main():
         for p in db_sg["IpPermissions"])
     check("Security group " + DB_SG + " รับ 3306 จาก " + WEB_SG + " เท่านั้น", db_ok, "รัน python3 aws/step1_network_db.py")
 
-    print("\n— บริการที่นับคะแนน 8 ตัว")
+    print("\n— บริการที่นับคะแนน : EC2, EBS, S3, RDS, SNS, Lambda, EventBridge (+ CloudFront ถ้า Lab ให้สิทธิ์)")
     # RDS
     db = safe(lambda: rds.describe_db_instances(DBInstanceIdentifier=DB_ID)["DBInstances"][0])
     check("RDS " + DB_ID + " สถานะ available", bool(db) and db["DBInstanceStatus"] == "available",
@@ -182,7 +182,7 @@ def main():
     streams = safe(lambda: logs.describe_log_streams(logGroupName=group, orderBy="LastEventTime",
                                                      descending=True, limit=1)["logStreams"], [])
     check("CloudWatch มี log ของ Lambda (" + group + ")", bool(streams),
-          "รัน Lambda 1 ครั้ง (step4 หรือกด Test) แล้วเปิด CloudWatch → Log groups → " + group)
+          "รัน Lambda 1 ครั้ง (step4 หรือกด Test) แล้วเปิด CloudWatch → Logs → Log Management → " + group)
     print("ℹ️  CLI : คำสั่ง aws ... และสคริปต์ใน aws/ ที่รันอยู่นี้")
     cost = cost_this_month(s)
     print("ℹ️  ค่าใช้จ่ายเดือนนี้ : " + cost if cost else
@@ -190,7 +190,10 @@ def main():
 
     passed = sum(results)
     print("\nผ่าน " + str(passed) + "/" + str(len(results)) + (" 🎉 ครบทุกข้อ" if passed == len(results) else ""))
-    print("ทดสอบด้วยมือเพิ่ม : เปิดลิงก์ https บนมือถือ → เปิดกล้อง → ถ่ายผลไม้ → ดูหน้า /history → ดูอีเมลเตือน")
+    if denied:
+        print("ทดสอบด้วยมือเพิ่ม : เปิด http://" + str(dns) + ":" + str(PORT) + "/ → ปุ่มอัปโหลด/ถ่ายรูป → ดูหน้า /history → ดูอีเมลเตือน")
+    else:
+        print("ทดสอบด้วยมือเพิ่ม : เปิดลิงก์ https บนมือถือ → เปิดกล้อง → ถ่ายผลไม้ → ดูหน้า /history → ดูอีเมลเตือน")
 
 
 if __name__ == "__main__":
