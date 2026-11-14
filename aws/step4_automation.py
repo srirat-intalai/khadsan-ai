@@ -85,7 +85,7 @@ def main():
     print("\nต้องเห็น : statusCode 200 และได้อีเมล 'KhadSan AI Daily Summary - <วันนี้>' (ยังไม่มีการสแกน ตัวเลขเป็น 0 ได้)")
     print("ดูผลใน Console : Lambda → " + LAMBDA + " → Configuration → Triggers = EventBridge  /  EventBridge → Rules → " + RULE)
     print("ดู log ใน CloudWatch : CloudWatch → Log groups → /aws/lambda/" + LAMBDA + " → stream ล่าสุด (บรรทัด START / END / REPORT)")
-    print("ต่อไป → python3 aws/step5_cloudfront.py (เมื่อเว็บบน EC2 ตอบ 200 แล้ว)")
+    print("ต่อไป → สแกนผลไม้ผ่านเว็บ 1 รูป แล้ว python3 aws/check.py")
 
 
 if __name__ == "__main__":

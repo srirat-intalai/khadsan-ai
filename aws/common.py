@@ -19,7 +19,6 @@ LAMBDA = "KhadsanDailySummary"
 RULE = "khadsan-daily-1800"
 CRON = "cron(0 11 * * ? *)"            # 11:00 UTC = 18:00 เวลาไทย
 EC2_PREFIX = "khadsan-web"
-CF_COMMENT = "khadsan-ai"              # ใส่ใน Description ของ CloudFront ให้ check/cleanup หาเจอ
 PORT = 7860
 
 # ค่าที่สคริปต์ขั้น 1-5 จดไว้ให้สคริปต์อื่นใช้ (มีรหัส DB อยู่ข้างใน อ่านได้แค่เจ้าของ)
@@ -84,16 +83,6 @@ def find_topic_arn(sns):
             if t["TopicArn"].endswith(":" + TOPIC):
                 return t["TopicArn"]
     return None
-
-
-def list_cloudfront(cf):
-    """คืน (รายการ distribution, None) หรือ (None, ข้อความ) ถ้าบัญชีไม่มีสิทธิ์ CloudFront (Learner Lab บางรุ่นปิดไว้)"""
-    try:
-        return cf.list_distributions().get("DistributionList", {}).get("Items", []), None
-    except Exception as e:   # noqa: BLE001
-        if "AccessDenied" in type(e).__name__ or "AccessDenied" in str(e) or "not authorized" in str(e):
-            return None, "บัญชีนี้ไม่มีสิทธิ์ใช้ CloudFront (Learner Lab ปิดไว้)"
-        raise
 
 
 def pick_bucket(s3, env):

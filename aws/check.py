@@ -58,7 +58,7 @@ def main():
     s = session()
     env = load_env()
     iam, ec2, rds, s3 = s.client("iam"), s.client("ec2"), s.client("rds"), s.client("s3")
-    sns, lam, events, cf = s.client("sns"), s.client("lambda"), s.client("events"), s.client("cloudfront")
+    sns, lam, events = s.client("sns"), s.client("lambda"), s.client("events")
     print("บัญชี " + account_id(s) + " / region " + REGION + "\n")
 
     print("— บริการพื้นฐานที่ทุกระบบต้องมี (สีม่วง : ไม่นับในเกณฑ์ 4 บริการ) : IAM / VPC")
@@ -74,7 +74,7 @@ def main():
         for p in db_sg["IpPermissions"])
     check("Security group " + DB_SG + " รับ 3306 จาก " + WEB_SG + " เท่านั้น", db_ok, "รัน python3 aws/step1_network_db.py")
 
-    print("\n— บริการที่นับคะแนน : EC2, EBS, S3, RDS, SNS, Lambda, EventBridge (+ CloudFront ถ้า Lab ให้สิทธิ์)")
+    print("\n— บริการที่นับคะแนน 7 ตัว : EC2, EBS, S3, RDS, SNS, Lambda, EventBridge")
     # RDS
     db = safe(lambda: rds.describe_db_instances(DBInstanceIdentifier=DB_ID)["DBInstances"][0])
     check("RDS " + DB_ID + " สถานะ available", bool(db) and db["DBInstanceStatus"] == "available",
@@ -146,35 +146,6 @@ def main():
             check("เว็บบน EC2 ตอบ http://" + dns + ":" + str(PORT) + " (" + str(code) + ")", code == 200,
                   "รอติดตั้งราว 10 นาที แล้วดู sudo tail -n 40 /var/log/khadsan-setup.log บน EC2")
 
-    # CloudFront
-    dists, denied = safe(lambda: list_cloudfront(cf), ([], None))
-    if denied:
-        print("ℹ️  CloudFront : " + denied + " (ไม่นับเป็น ❌) เปิดเว็บที่ http://" + str(dns) + ":" + str(PORT) + "/")
-        dists = []
-    mine = [] if denied else [d for d in dists if d.get("Comment") == CF_COMMENT or
-            (dns and any(o["DomainName"] == dns for o in d["Origins"]["Items"]))]
-    if not denied:
-        check("CloudFront distribution (Description = " + CF_COMMENT + " หรือ origin = EC2)", bool(mine),
-              "รัน python3 aws/step5_cloudfront.py")
-    if mine:
-        d = mine[0]
-        origin = d["Origins"]["Items"][0]
-        check("CloudFront origin = EC2 ที่รันอยู่", bool(dns) and origin["DomainName"] == dns,
-              "origin ตอนนี้คือ " + origin["DomainName"] + " → รัน python3 aws/fix_origin.py (Public DNS เปลี่ยนทุกครั้งที่ Start Lab ใหม่)")
-        port_ok = origin.get("CustomOriginConfig", {}).get("HTTPPort") == PORT
-        check("CloudFront origin พอร์ต " + str(PORT) + " แบบ HTTP only", port_ok, "Origins → Edit → HTTP port = 7860")
-        b = d["DefaultCacheBehavior"]
-        check("CloudFront ส่ง POST ได้ (อัปรูป)", "POST" in b["AllowedMethods"]["Items"],
-              "Behaviors → Edit → Allowed HTTP methods = GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE")
-        check("CloudFront บังคับ https", b["ViewerProtocolPolicy"] in ("redirect-to-https", "https-only"),
-              "Behaviors → Edit → Viewer protocol policy = Redirect HTTP to HTTPS")
-        check("CloudFront สถานะ Deployed", d["Status"] == "Deployed", "รอราว 5-10 นาที")
-        for path in ("/", "/history"):
-            url = "https://" + d["DomainName"] + path
-            code = http_status(url)
-            check("เปิด " + url + " ได้ (" + str(code) + ")", code == 200,
-                  "เช็กว่าเว็บบน EC2 ขึ้นก่อน และ origin ถูกตัว")
-
     # บริการพื้นฐาน : CloudWatch (log) / Cost (เครดิต) / CLI (สคริปต์นี้ก็คือ CLI)
     print("\n— บริการพื้นฐาน (สีม่วง) : CloudWatch / CLI / Cost")
     logs = s.client("logs")
@@ -190,10 +161,7 @@ def main():
 
     passed = sum(results)
     print("\nผ่าน " + str(passed) + "/" + str(len(results)) + (" 🎉 ครบทุกข้อ" if passed == len(results) else ""))
-    if denied:
-        print("ทดสอบด้วยมือเพิ่ม : เปิด http://" + str(dns) + ":" + str(PORT) + "/ → ปุ่มอัปโหลด/ถ่ายรูป → ดูหน้า /history → ดูอีเมลเตือน")
-    else:
-        print("ทดสอบด้วยมือเพิ่ม : เปิดลิงก์ https บนมือถือ → เปิดกล้อง → ถ่ายผลไม้ → ดูหน้า /history → ดูอีเมลเตือน")
+    print("ทดสอบด้วยมือเพิ่ม : เปิด http://" + str(dns) + ":" + str(PORT) + "/ → ปุ่มอัปโหลด/ถ่ายรูป → ดูหน้า /history → ดูอีเมลเตือน")
 
 
 if __name__ == "__main__":

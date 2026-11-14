@@ -9,7 +9,7 @@
 #   DB_SSL_CA       ไฟล์ใบรับรองของ RDS (ไม่มี = ยังเข้ารหัส แต่ไม่ตรวจใบรับรอง)
 #   SNS_TOPIC_ARN   ARN ของ topic khadsan-alerts
 #   ALERT_ROTTEN    เจอลูกคัดออกตั้งแต่กี่ลูกในรูปเดียวถึงส่งอีเมลเตือน (ไม่ตั้ง = 3)
-#   SITE_URL        ลิงก์ https ของเว็บ (CloudFront) ใส่ในอีเมลเตือน ไม่บังคับ
+#   SITE_URL        ลิงก์ของเว็บ ใส่ในอีเมลเตือน ไม่บังคับ
 #   AWS_REGION      ไม่ตั้ง = us-east-1
 #
 # สิทธิ์ AWS มาจาก IAM role ของ EC2 (Learner Lab = LabInstanceProfile → LabRole) ไม่ใส่ Access Key ในโค้ด

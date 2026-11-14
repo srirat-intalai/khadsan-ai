@@ -6,7 +6,7 @@
 
 โค้ดทั้งหมดอยู่ใน branch **`aws-workshop`** ของ repo KhadSan AI (branch `main` เป็นงานวิชา CS461)
 
-**บริการที่นับในเกณฑ์ (8 ตัว)** : EC2, EBS, S3, RDS, CloudFront, SNS, Lambda, EventBridge
+**บริการที่นับในเกณฑ์ (7 ตัว)** : EC2, EBS, S3, RDS, SNS, Lambda, EventBridge
 
 **บริการพื้นฐานที่ทุกระบบต้องมี (สีม่วงในโจทย์ ไม่นับในเกณฑ์ 4 บริการ แต่ต้องมี)**
 
@@ -21,10 +21,7 @@
 ## Architecture
 
 ```
-ผู้ใช้ (มือถือ / คอม)
-   │ https
-   ▼
-CloudFront ──http:7860──▶ EC2 (Flask + YOLOv8n, ดิสก์ EBS)
+ผู้ใช้ (มือถือ / คอม) ──http:7860──▶ EC2 (Flask + YOLOv8n, ดิสก์ EBS)
                               ├──▶ S3   รูปตีกรอบ images/ + log logs/*.json
                               ├──▶ RDS  MySQL ตาราง scans (หน้า /history)
                               └──▶ SNS  อีเมลเตือนทันทีเมื่อคัดออก ≥ 3 ลูก
@@ -35,7 +32,7 @@ EventBridge (ทุกวัน 18:00) ──▶ Lambda ──อ่าน log �
 
 | # | ต้องเห็น | พิสูจน์บริการ |
 |---|---|---|
-| 1 | เปิด `https://xxxx.cloudfront.net` แล้วถ่าย/อัปรูปผลไม้ ได้ผลตีกรอบ | CloudFront, EC2, EBS |
+| 1 | เปิด `http://<EC2 Public DNS>:7860` แล้วกดอัปโหลด/ถ่ายรูปผลไม้ ได้ผลตีกรอบ | EC2, EBS |
 | 2 | ใต้ผลขึ้น "บันทึกผลนี้แล้ว" และ `aws s3 ls` เห็นรูป | S3 |
 | 3 | หน้า **ประวัติการตรวจ** (/history) มีรายการที่เพิ่งสแกน | RDS |
 | 4 | รูปที่มีลูกเน่า ≥ 3 ลูก → ได้อีเมลเตือน | SNS |
@@ -51,13 +48,12 @@ EventBridge (ทุกวัน 18:00) ──▶ Lambda ──อ่าน log �
 | 2 | `step2_storage_alerts.py` | **S3** + **SNS** | กด Confirm ในอีเมล |
 | 3 | `step3_web_server.py` | **EC2** + **EBS** | รอ RDS พร้อมก่อน แล้วเครื่องติดตั้งเว็บเองราว 10-15 นาที |
 | 4 | `step4_automation.py` | **Lambda** + **EventBridge** | ทำระหว่างรอ EC2 |
-| 5 | `step5_cloudfront.py` | **CloudFront** | Deploy ราว 5-10 นาที |
-| 6 | ทดสอบเว็บ | – | – |
-| 7 | `check.py` | – | – |
-| 8 | `cleanup.py` | ลบทุกอย่าง | CloudFront ลบได้หลัง Disable ราว 5-15 นาที |
+| 5 | ทดสอบเว็บ | – | – |
+| 6 | `check.py` | – | – |
+| 7 | `cleanup.py --yes` | ลบทุกอย่าง | รอ RDS ลบราว 5-10 นาที |
 
-> **ระบบเดโมของทีม** : ทำขั้น 0-7 แล้ว **ไม่ต้องทำขั้น 8** เก็บไว้ใช้วันเดโม (ดูหัวข้อ "เปิด Lab ใหม่")
-> **กลุ่มที่ทำ workshop** : ทำขั้น 0-8 ครบ **ห้ามข้ามขั้น 8** End Lab แค่หยุดเครื่อง ไม่ได้ลบ RDS / CloudFront / EBS ที่ค้างยังกินเครดิต Lab
+> **ระบบเดโมของทีม** : ทำขั้น 0-6 แล้ว **ไม่ต้องทำขั้น 7** เก็บไว้ใช้วันเดโม (ดูหัวข้อ "เปิด Lab ใหม่")
+> **กลุ่มที่ทำ workshop** : ทำขั้น 0-7 ครบ **ห้ามข้ามขั้น 7** End Lab แค่หยุดเครื่อง ไม่ได้ลบ RDS / EBS ที่ค้างยังกินเครดิต Lab
 
 ---
 
@@ -73,7 +69,7 @@ EventBridge (ทุกวัน 18:00) ──▶ Lambda ──อ่าน log �
    echo $AWS_REGION
    ```
 
-**ต้องเห็น** : `step1_network_db.py` ... `step5_cloudfront.py`, `check.py`, `cleanup.py`, Arn มี `assumed-role/voclabs` และ `us-east-1`
+**ต้องเห็น** : `step1_network_db.py` ... `step4_automation.py`, `check.py`, `cleanup.py`, Arn มี `assumed-role/voclabs` และ `us-east-1`
 **ถ้า error** `No space left on device` : พื้นที่ CloudShell (1 GB) เต็ม → `du -sh ~/* ~/.[!.]* 2>/dev/null | sort -h | tail` ดูว่าอะไรกิน แล้วลบของที่ไม่ใช้ (เช่น clone เก่า `rm -rf ~/khadsan-ai`) หรือ Actions → Delete (ล้าง CloudShell ทั้งหมด)
 **ถ้า error** `destination path 'khadsan-ai' already exists` : มี clone เก่า → `rm -rf ~/khadsan-ai` แล้ว clone ใหม่
 
@@ -131,27 +127,14 @@ python3 aws/step4_automation.py
 
 **ต้องเห็น** : `statusCode 200` และได้อีเมล **KhadSan AI Daily Summary - วันนี้** (ยังไม่สแกน ตัวเลข 0 ได้)
 **ดูใน Console** : Lambda → `KhadsanDailySummary` → Triggers = EventBridge / EventBridge → Rules → `khadsan-daily-1800` Enabled
-**ดู log (CloudWatch)** : CloudWatch → Log groups → `/aws/lambda/KhadsanDailySummary` → stream ล่าสุด ต้องเห็น `START`, `END`, `REPORT ... Duration` (ถ้า Lambda error ข้อความ error จะอยู่ตรงนี้)
+**ดู log (CloudWatch)** : CloudWatch → Logs → Log Management → `/aws/lambda/KhadsanDailySummary` → stream ล่าสุด ต้องเห็น `START`, `END`, `REPORT ... Duration` (ถ้า Lambda error ข้อความ error จะอยู่ตรงนี้)
 
 > ไม่ต้องสร้าง IAM role ใหม่ (Learner Lab สร้างไม่ได้ จะเจอ `iam:CreateRole` not authorized) สคริปต์ให้สิทธิ์ EventBridge เรียก Lambda ที่ตัว Lambda แทน
 
-## ขั้น 5 : CloudFront (https)
+## ขั้น 5 : ทดสอบ
 
-รอให้ curl ในขั้น 3 ได้ `200` ก่อน แล้ว
-```bash
-python3 aws/step5_cloudfront.py
-```
-สร้าง distribution ชี้ EC2 พอร์ต 7860 (HTTP only), Redirect HTTP → HTTPS, รับ POST, CachingDisabled, Description `khadsan-ai`
-
-ทำไมต้องมี : เบราว์เซอร์เปิดกล้องได้เฉพาะหน้าเว็บ https และ `*.cloudfront.net` มีใบรับรองให้ ไม่ต้องซื้อโดเมน ยังช่วยกรณี Wi-Fi บล็อกพอร์ต 7860 ด้วย (ผู้ใช้เข้าทาง 443)
-
-**ต้องเห็น** : `ลิงก์เว็บ : https://xxxx.cloudfront.net`
-**ดูใน Console** : CloudFront → Distributions → สถานะ Deploying → **Deployed** (ราว 5-10 นาที)
-ถ้าสคริปต์บอกว่าสร้างไม่ได้ (สิทธิ์ Lab) มันจะพิมพ์ค่าที่ต้องกรอกใน Console ให้ทำตามนั้น
-
-## ขั้น 6 : ทดสอบ
-
-1. เปิดลิงก์ CloudFront **บนมือถือ** → เปิดกล้อง → ถ่ายผลไม้ → ตรวจ
+1. เปิด `http://<EC2 Public DNS>:7860` (ลิงก์อยู่ในผล `check.py`) → กด**อัปโหลด/ถ่ายรูป** → ตรวจ
+   (เว็บเป็น http ปุ่มกล้องสดในหน้าเว็บจึงไม่ขึ้น ใช้ปุ่มถ่ายรูปแทน)
    **ต้องเห็น** : ผลตีกรอบ และ "บันทึกผลนี้แล้ว" (ถ้ามีลูกเน่า ≥ 3 → "ส่งอีเมลเตือนแล้ว" + ได้อีเมล)
 2. กด **ประวัติการตรวจ** → เห็นรายการที่เพิ่งสแกน พร้อมรูป (ข้อมูลจาก RDS)
 3. ใน CloudShell
@@ -161,34 +144,34 @@ python3 aws/step5_cloudfront.py
    ```
    **ต้องเห็น** : ไฟล์ `images/<วันนี้>/...jpg` กับ `logs/<วันนี้>/...json` และ `scans` ไม่เป็น 0
 
-## ขั้น 7 : ตรวจงาน
+## ขั้น 6 : ตรวจงาน
 
 ```bash
 python3 aws/check.py
 ```
-**ต้องเห็น** : ✅ ทุกบรรทัด (❌ จะบอกว่าต้องแก้อะไร) รวมถึงหมวดบริการพื้นฐาน (CloudWatch มี log ของ Lambda) และบรรทัด ℹ️ ค่าใช้จ่าย
+**ต้องเห็น** : `ผ่าน 22/22` (❌ จะบอกว่าต้องแก้อะไร) รวมถึงหมวดบริการพื้นฐาน (CloudWatch มี log ของ Lambda) และบรรทัด ℹ️ ค่าใช้จ่าย
 
 **ดูค่าใช้จ่าย** : หน้า Learner Lab → Used $ / Budget (หรือ Billing and Cost Management → Cost Explorer ถ้าบัญชีเปิดให้)
 
-## ขั้น 8 : Clean up (กลุ่มที่ทำ workshop เท่านั้น)
+## ขั้น 7 : Clean up (กลุ่มที่ทำ workshop เท่านั้น)
 
 ```bash
-python3 aws/cleanup.py
+cd ~/khadsan-ai && python3 aws/cleanup.py --yes
 ```
-พิมพ์ `DELETE` ยืนยัน → ลบ EventBridge, Lambda, CloudFront, EC2 (+EBS), RDS, S3 (+รูปทั้งหมด), SNS, Security group และ `~/khadsan.env` (LabRole ไม่ลบ)
-CloudFront ต้อง Disable แล้วรอราว 5-15 นาทีถึงลบได้ สคริปต์รอให้ ถ้า CloudShell หลุด ให้รันซ้ำ
+ลบ EventBridge, Lambda, EC2 (+EBS), RDS, S3 (+รูปทั้งหมด), SNS, Security group และ `~/khadsan.env` (LabRole ไม่ลบ) รอ RDS ลบเสร็จแล้วสคริปต์ลบ Security group ให้เอง ถ้า CloudShell หลุด ให้รันซ้ำ
+(ไม่ใส่ `--yes` ต้องพิมพ์ `DELETE` ยืนยัน สลับแป้นเป็นภาษาอังกฤษก่อน)
 แล้ว **End Lab**
 
 ---
 
 ## เปิด Lab ใหม่ (เช่น วันเดโม)
 
-Learner Lab หยุด EC2 / RDS ตอนจบ session พอ Start Lab ใหม่ EC2 ได้ Public DNS ใหม่ → CloudFront ขึ้น 502/504
+Learner Lab หยุด EC2 / RDS ตอนจบ session (ราว 4 ชั่วโมง ทุกคำสั่งจะขึ้น `voc-cancel-cred`) พอ Start Lab ใหม่ EC2 ได้ Public DNS ใหม่ **ลิงก์เว็บเปลี่ยน**
 ```bash
-cd ~/khadsan-ai && python3 aws/fix_origin.py
+cd ~/khadsan-ai && python3 aws/reopen.py
 python3 aws/check.py
 ```
-เปิด EC2 / RDS ที่หยุดอยู่ และแก้ origin ของ CloudFront ให้ชี้ที่ใหม่ รอ Deployed ราว 5 นาที (RDS เปิดใหม่ราว 5 นาที)
+เปิด EC2 / RDS ที่หยุดอยู่ แล้วพิมพ์ลิงก์เว็บอันใหม่ (RDS เปิดใหม่ราว 5 นาที) ถ้า `cd` ขึ้น No such file ให้ clone ใหม่ก่อน (ขั้น 0)
 
 ## แก้ปัญหา (เจอจริงตอนซ้อม)
 
@@ -201,10 +184,13 @@ python3 aws/check.py
 | Lambda `An ARN must have at least 6 elements` | พิมพ์ SNS ARN เองแล้วขาด `arn:` ข้างหน้า สคริปต์ใส่ให้เอง รัน `step4_automation.py` ซ้ำได้ |
 | User data ติดตั้งไม่จบ / `--index-url` error | คัดลอก User data จากสไลด์แล้วบรรทัดถูกตัด ใช้ `step3_web_server.py` |
 | `systemctl status khadsan` → could not be found | ยังติดตั้งไม่เสร็จ รอแล้วดู `sudo tail -n 20 /var/log/khadsan-setup.log` บน EC2 ต้องจบด้วย `KHADSAN SETUP COMPLETE` |
-| `http://IP:7860` หมุนค้าง แต่ curl บน EC2 ได้ 200 | เครือข่าย (เช่น Wi-Fi มหาวิทยาลัย) บล็อกพอร์ต 7860 เปิดผ่านลิงก์ CloudFront แทน |
+| `http://IP:7860` หมุนค้าง แต่ `check.py` ได้ 200 | เครือข่าย (เช่น Wi-Fi มหาวิทยาลัย) บล็อกพอร์ต 7860 เปิดจากมือถือที่ใช้เน็ตมือถือแทน |
 | ไม่ได้อีเมลเตือน/สรุป | SNS → Subscriptions ต้อง Confirmed / ดู Junk / อีเมลมหาวิทยาลัยอาจไปแท็บ Other |
 | เว็บขึ้นแต่ไม่บันทึก ("บันทึกผลนี้ไม่ครบ") | EC2 ไม่ได้ใช้ LabInstanceProfile หรือ RDS ยังไม่ available ดู `sudo journalctl -u khadsan -n 50` |
-| CloudFront 502 / 504 | เว็บบน EC2 ยังไม่ขึ้น หรือเพิ่ง Start Lab ใหม่ → `python3 aws/fix_origin.py` |
+| ทุกคำสั่งขึ้น `voc-cancel-cred` | Lab หมดเวลา → Start Lab แล้วเปิด CloudShell ใหม่ แล้ว `python3 aws/reopen.py` |
+| `ไม่พบ S3 bucket` / `BucketAlreadyExists` | ชื่อ bucket ต้องขึ้นต้น `khadsan-images-` (มี s) และไม่ซ้ำใครในโลก ใช้ `khadsan-images-<เลขบัญชี>` S3 เปลี่ยนชื่อไม่ได้ ต้องสร้างใหม่ |
+| มี `>` ขึ้นหลังวางคำสั่ง | คำสั่งถูกตัดเป็น 2 บรรทัด กด Ctrl+C แล้ววางใหม่เป็นบรรทัดเดียว |
+| `can't open file aws/...` | ไม่ได้อยู่ในโฟลเดอร์ → `cd ~/khadsan-ai` (ต้องเห็น `khadsan-ai $`) |
 
 ## เรื่องความปลอดภัยที่ควรรู้
 
@@ -212,4 +198,4 @@ python3 aws/check.py
 - RDS ไม่เปิดสาธารณะ รับเฉพาะจาก `khadsan-web-sg` และเว็บต่อแบบเข้ารหัส (TLS)
 - ไม่มี Access Key ในโค้ด สิทธิ์มาจาก LabRole ของ EC2 / Lambda
 - `~/khadsan.env` และ `~/khadsan-userdata.sh` มีรหัส DB ห้ามแชร์ / ห้ามใส่ในสไลด์ / ห้าม commit ขึ้น GitHub
-- พอร์ต 7860 เปิดให้ทุกคนเพื่อทดสอบ ถ้าอยากให้เข้าทาง CloudFront อย่างเดียว ให้แก้ inbound rule ของ `khadsan-web-sg` เป็น prefix list `com.amazonaws.global.cloudfront.origin-facing`
+- พอร์ต 7860 เปิดให้ทุกคนเพื่อทดสอบ เว็บเป็น http (ไม่เข้ารหัส) ไม่ควรใช้กับข้อมูลจริงที่เป็นความลับ

@@ -3,9 +3,7 @@
 # แสดงรายการก่อน แล้วต้องพิมพ์ DELETE ถึงจะลบจริง
 #
 # ตัวเลือก
-#   --yes        ไม่ถามยืนยัน
-#   --no-wait    CloudFront แค่สั่ง Disable ไม่รอลบ (ลบเองทีหลังได้ หรือรันสคริปต์นี้ซ้ำ)
-# CloudFront ต้อง Disable แล้วรอสถานะ Deployed (ราว 5-15 นาที) ก่อนถึงจะลบได้ สคริปต์จะรอให้
+#   --yes        ไม่ถามยืนยัน (ใช้เมื่อแป้นพิมพ์เป็นภาษาไทยแล้วพิมพ์ DELETE ไม่ติด)
 
 import argparse
 import os
@@ -33,36 +31,12 @@ def quiet(fn, what):
 
 
 def find_all(s):
-    ec2, cf, s3 = s.client("ec2"), s.client("cloudfront"), s.client("s3")
+    ec2, s3 = s.client("ec2"), s.client("s3")
     res = ec2.describe_instances(Filters=[
         {"Name": "tag:Name", "Values": [EC2_PREFIX + "*"]},
         {"Name": "instance-state-name", "Values": ["pending", "running", "stopping", "stopped"]}])["Reservations"]
     instances = [i for r in res for i in r["Instances"]]
-    dns = {i.get("PublicDnsName") for i in instances if i.get("PublicDnsName")}
-    dists, denied = list_cloudfront(cf)
-    if denied:
-        print("ข้าม CloudFront : " + denied)
-        dists = []
-    mine = [d for d in dists if d.get("Comment") == CF_COMMENT or
-            any(o["DomainName"] in dns for o in d["Origins"]["Items"])]
-    return instances, mine, find_buckets(s3)
-
-
-def delete_cloudfront(cf, dist_id, wait):
-    conf = cf.get_distribution_config(Id=dist_id)
-    etag, config = conf["ETag"], conf["DistributionConfig"]
-    if config["Enabled"]:
-        config["Enabled"] = False
-        etag = cf.update_distribution(Id=dist_id, IfMatch=etag, DistributionConfig=config)["ETag"]
-        print("  สั่ง Disable แล้ว " + dist_id)
-    if not wait:
-        print("  ยังไม่ลบ " + dist_id + " (--no-wait) รอสถานะ Deployed แล้วกด Delete เอง หรือรันสคริปต์นี้ซ้ำ")
-        return
-    print("  รอ " + dist_id + " Deployed (ราว 5-15 นาที) ...")
-    cf.get_waiter("distribution_deployed").wait(Id=dist_id, WaiterConfig={"Delay": 30, "MaxAttempts": 60})
-    etag = cf.get_distribution_config(Id=dist_id)["ETag"]
-    cf.delete_distribution(Id=dist_id, IfMatch=etag)
-    print("  ลบแล้ว  CloudFront " + dist_id)
+    return instances, find_buckets(s3)
 
 
 def empty_and_delete_bucket(s3, name):
@@ -78,16 +52,14 @@ def empty_and_delete_bucket(s3, name):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--yes", action="store_true")
-    ap.add_argument("--no-wait", action="store_true")
     args = ap.parse_args()
 
     s = session()
     print("บัญชี " + account_id(s) + " / region " + REGION)
-    instances, dists, buckets = find_all(s)
+    instances, buckets = find_all(s)
 
     print("\nจะลบสิ่งเหล่านี้ (ไม่มีก็ข้าม)")
     print("  EventBridge rule " + RULE + " / Lambda " + LAMBDA + " + log group")
-    print("  CloudFront : " + (", ".join(d["Id"] + " (" + d["DomainName"] + ")" for d in dists) or "ไม่พบ"))
     print("  EC2 : " + (", ".join(i["InstanceId"] for i in instances) or "ไม่พบ") + " (EBS root ลบตามไปด้วย)")
     print("  RDS " + DB_ID + " (ไม่เก็บ snapshot)")
     print("  S3 : " + (", ".join(buckets) or "ไม่พบ") + " (ลบรูปและ log ทั้งหมดในนั้น)")
@@ -97,8 +69,7 @@ def main():
         sys.exit("ยกเลิก ไม่ได้ลบอะไร")
 
     ec2, rds, s3 = s.client("ec2"), s.client("rds"), s.client("s3")
-    events, lam, sns, cf, logs = (s.client("events"), s.client("lambda"), s.client("sns"),
-                                  s.client("cloudfront"), s.client("logs"))
+    events, lam, sns, logs = s.client("events"), s.client("lambda"), s.client("sns"), s.client("logs")
 
     step("EventBridge + Lambda")
     try:
@@ -125,13 +96,6 @@ def main():
         db_exists = False
     except Exception as e:   # noqa: BLE001
         print("  ลบ RDS ไม่ได้ : " + str(e) + " (ถ้ากำลังลบอยู่แล้วก็ปกติ)")
-
-    step("CloudFront (ต้อง Disable ก่อนลบ)")
-    for d in dists:
-        try:
-            delete_cloudfront(cf, d["Id"], not args.no_wait)
-        except Exception as e:   # noqa: BLE001
-            print("  ลบ CloudFront " + d["Id"] + " ไม่ได้ : " + str(e))
 
     step("S3 + SNS")
     for b in buckets:
@@ -164,7 +128,7 @@ def main():
             os.remove(path)
             print("  ลบแล้ว  " + path)
 
-    print("\nเสร็จแล้ว ต้องเห็น : EC2 terminated, RDS / S3 / CloudFront ไม่อยู่ในรายการ")
+    print("\nเสร็จแล้ว ต้องเห็น : EC2 terminated, RDS / S3 ไม่อยู่ในรายการ")
     print("ดูเครดิตที่เหลือในหน้า Learner Lab (Used $ / Budget) แล้วกด End Lab")
 
 
