@@ -90,9 +90,9 @@ def main():
         check("S3 Block all public access", bool(pab) and all(pab.values()), "Permissions → Block public access → เปิดทั้ง 4 ข้อ")
         for prefix, hint in (("images/", "ยังไม่มีรูป ลองสแกนผลไม้ผ่านเว็บ 1 รูป"),
                              ("logs/", "ยังไม่มี log ลองสแกนผลไม้ผ่านเว็บ 1 รูป")):
-            n = safe(lambda: s3.list_objects_v2(Bucket=bucket, Prefix=prefix, MaxKeys=50).get("KeyCount", 0), 0)
-            check("S3 มีไฟล์ใน " + prefix + " (" + str(n) + " ไฟล์ ไม่นับโฟลเดอร์)",
-                  n > 1 or (n == 1 and not safe(lambda: s3.head_object(Bucket=bucket, Key=prefix), False)), hint)
+            keys = safe(lambda: [o["Key"] for o in s3.list_objects_v2(Bucket=bucket, Prefix=prefix, MaxKeys=50).get("Contents", [])], [])
+            n = len([k for k in keys if not k.endswith("/")])   # โฟลเดอร์ที่กดสร้างในหน้า Console ไม่นับ
+            check("S3 มีไฟล์ใน " + prefix + " (" + str(n) + " ไฟล์ ไม่นับโฟลเดอร์)", n > 0, hint)
 
     # SNS
     topic = find_topic_arn(sns)
