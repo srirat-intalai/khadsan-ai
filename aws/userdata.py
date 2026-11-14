@@ -29,7 +29,8 @@ set -euxo pipefail
 exec > >(tee -a /var/log/khadsan-setup.log) 2>&1
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
-apt-get install -y python3 python3-venv python3-pip curl git
+# libgl1 : OpenCV (ที่ ultralytics ลงมา) ต้องใช้ libGL.so.1 ไม่มีแล้ว import โมเดลไม่ได้ เว็บจะขึ้น "AI ตรวจไม่ได้"
+apt-get install -y python3 python3-venv python3-pip curl git libgl1
 
 # swap 4 GB : t3.small มีแรม 2 GB ตอนลง/โหลด PyTorch ไม่พอ
 if ! swapon --show=NAME --noheadings | grep -q /swapfile; then
