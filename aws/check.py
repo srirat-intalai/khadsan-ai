@@ -74,7 +74,7 @@ def main():
         for p in db_sg["IpPermissions"])
     check("Security group " + DB_SG + " รับ 3306 จาก " + WEB_SG + " เท่านั้น", db_ok, "รัน python3 aws/step1_network_db.py")
 
-    print("\n— บริการที่นับคะแนน 7 ตัว : EC2, EBS, S3, RDS, SNS, Lambda, EventBridge")
+    print("\n— บริการที่นับคะแนน 6 ตัว : EC2, S3, RDS, SNS, Lambda, EventBridge (EBS เป็นดิสก์ของ EC2 ไม่นับแยก)")
     # RDS
     db = safe(lambda: rds.describe_db_instances(DBInstanceIdentifier=DB_ID)["DBInstances"][0])
     check("RDS " + DB_ID + " สถานะ available", bool(db) and db["DBInstanceStatus"] == "available",
